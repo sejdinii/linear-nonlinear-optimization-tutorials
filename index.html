@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Optimisation Tutorials</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{background:#fff;color:#1a1a1a;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI','Helvetica Neue',sans-serif;-webkit-font-smoothing:antialiased;min-height:100vh;display:flex;flex-direction:column}
+
+header{max-width:720px;margin:0 auto;padding:80px 24px 0;text-align:center}
+header h1{font-size:1.8rem;font-weight:700;letter-spacing:-.02em}
+header p{color:#6B7280;font-size:.95rem;margin-top:8px;line-height:1.6}
+header .placeholder{}
+
+.sections{max-width:720px;margin:48px auto 0;padding:0 24px;width:100%}
+
+.section{margin-bottom:36px}
+.section-title{font-size:.72rem;font-weight:600;text-transform:uppercase;letter-spacing:.07em;color:#6B7280;margin-bottom:12px;padding-left:2px}
+
+.card-link{display:block;text-decoration:none;color:inherit;background:#F9FAFB;border:1px solid #E5E7EB;border-radius:12px;padding:20px 24px;transition:all .15s;position:relative;overflow:hidden}
+.card-link:hover{border-color:#D1D5DB;background:#F3F4F6;transform:translateY(-1px);box-shadow:0 4px 12px rgba(0,0,0,.04)}
+.card-link+.card-link{margin-top:10px}
+
+.card-link h3{font-size:1rem;font-weight:600;display:flex;align-items:center;gap:8px}
+.card-link h3 .arrow{color:#9CA3AF;transition:transform .15s;margin-left:auto;font-size:.9rem}
+.card-link:hover h3 .arrow{transform:translateX(3px);color:#2563EB}
+
+.card-link p{font-size:.84rem;color:#6B7280;margin-top:4px;line-height:1.5}
+
+.card-link .pills{display:flex;gap:6px;margin-top:10px;flex-wrap:wrap}
+.card-link .pill{font-size:.68rem;font-weight:500;padding:2px 8px;border-radius:6px;background:#fff;border:1px solid #E5E7EB;color:#6B7280}
+
+.card-link.disabled{opacity:.45;pointer-events:none}
+.card-link.disabled h3::after{content:"Coming soon";font-size:.68rem;font-weight:500;color:#9CA3AF;background:#F3F4F6;padding:2px 8px;border-radius:6px;margin-left:8px}
+
+footer{max-width:720px;margin:auto auto 0;padding:40px 24px;text-align:center;font-size:.78rem;color:#9CA3AF}
+</style>
+</head>
+<body>
+
+<header>
+  <h1>Optimisation Tutorials</h1>
+  <p>Step-by-step interactive walkthroughs for optimisation methods.<br>Click a tutorial to start.</p>
+</header>
+
+<div class="sections">
+
+  <!-- ILP SECTION -->
+  <div class="section">
+    <div class="section-title">Integer & Binary Linear Programming</div>
+
+    <a class="card-link" href="bb-binary-knapsack.html">
+      <h3>
+        Branch & Bound — Binary Knapsack
+        <span class="arrow">→</span>
+      </h3>
+      <p>Full 15-node B&B tree solved step by step. Greedy LP relaxation, branching, pruning, incumbent tracking — everything explained like pen and paper.</p>
+      <div class="pills">
+        <span class="pill">Binary Knapsack</span>
+        <span class="pill">Best-Bound Strategy</span>
+        <span class="pill">18 Pages</span>
+        <span class="pill">Interactive Tree</span>
+      </div>
+    </a>
+
+    <a class="card-link disabled" href="#">
+      <h3>Branch & Bound — Integer Variables</h3>
+      <p>B&B with general integer variables. Floor/ceiling branching, dual simplex at each node.</p>
+      <div class="pills">
+        <span class="pill">Integer LP</span>
+        <span class="pill">Dual Simplex</span>
+      </div>
+    </a>
+
+    <a class="card-link disabled" href="#">
+      <h3>Gomory Cuts</h3>
+      <p>Generating and adding cutting planes to tighten the LP relaxation.</p>
+      <div class="pills">
+        <span class="pill">Cutting Planes</span>
+        <span class="pill">Fractional Cuts</span>
+      </div>
+    </a>
+
+    <a class="card-link disabled" href="#">
+      <h3>Cover Constraints</h3>
+      <p>Deriving cover inequalities for binary knapsack problems.</p>
+      <div class="pills">
+        <span class="pill">Knapsack Covers</span>
+        <span class="pill">Lifted Covers</span>
+      </div>
+    </a>
+  </div>
+
+  <!-- LP SECTION (placeholder) -->
+  <div class="section">
+    <div class="section-title">Linear Programming</div>
+
+    <a class="card-link disabled" href="#">
+      <h3>Simplex Method</h3>
+      <p>Standard simplex, tableau pivoting, entering/leaving variables.</p>
+      <div class="pills"><span class="pill">Normal Simplex</span><span class="pill">Tableaux</span></div>
+    </a>
+
+    <a class="card-link disabled" href="#">
+      <h3>Two-Phase Simplex</h3>
+      <p>Handling equality and ≥ constraints with artificial variables.</p>
+      <div class="pills"><span class="pill">Phase I</span><span class="pill">Phase II</span></div>
+    </a>
+
+    <a class="card-link disabled" href="#">
+      <h3>Sensitivity Analysis</h3>
+      <p>Shadow prices, reduced costs, ranging analysis.</p>
+      <div class="pills"><span class="pill">Dual Values</span><span class="pill">RHS Ranging</span></div>
+    </a>
+
+    <a class="card-link disabled" href="#">
+      <h3>Duality & Dual Simplex</h3>
+      <p>Primal-dual relationships and the dual simplex method.</p>
+      <div class="pills"><span class="pill">Duality</span><span class="pill">Dual Simplex</span></div>
+    </a>
+  </div>
+
+</div>
+
+<footer></footer>
+
+</body>
+</html>
