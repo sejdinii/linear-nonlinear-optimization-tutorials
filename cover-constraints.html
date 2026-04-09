@@ -1,0 +1,565 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Cover Constraints — Step by Step</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{background:#fff;color:#1a1a1a;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI','Helvetica Neue',sans-serif;-webkit-font-smoothing:antialiased;line-height:1.5}
+
+.nav{position:sticky;top:0;z-index:50;background:rgba(255,255,255,.92);backdrop-filter:blur(12px);border-bottom:1px solid #E5E7EB;padding:0 24px;display:flex;align-items:center;height:48px;gap:12px}
+.nav a{font-size:.9rem;font-weight:600;text-decoration:none;color:inherit;cursor:pointer}
+.nav a:hover{color:#2563EB}
+.nav .step-dots{display:flex;gap:5px;margin-left:auto;flex-wrap:wrap}
+.nav .dot{width:7px;height:7px;border-radius:50%;background:#E5E7EB;cursor:pointer;transition:all .2s}
+.nav .dot.active{background:#2563EB;transform:scale(1.4)}
+
+.progress{position:sticky;top:48px;z-index:49;height:3px;background:#F3F4F6}
+.progress-fill{height:100%;background:#2563EB;transition:width .4s ease}
+
+.controls{position:sticky;top:51px;z-index:48;background:rgba(255,255,255,.95);backdrop-filter:blur(8px);border-bottom:1px solid #F3F4F6;padding:8px 24px;display:flex;align-items:center;gap:10px;max-width:840px;margin:0 auto}
+.btn{padding:6px 16px;border-radius:8px;border:1px solid #E5E7EB;background:#fff;font-size:.8rem;font-weight:500;cursor:pointer;transition:all .15s;color:#374151}
+.btn:hover{background:#F9FAFB}
+.btn.primary{background:#2563EB;color:#fff;border-color:#2563EB}
+.btn.primary:hover{background:#1D4ED8}
+.btn:disabled{opacity:.3;cursor:default}
+.step-label{font-size:.78rem;color:#6B7280;margin-left:auto}
+
+.content{max-width:840px;margin:0 auto;padding:32px 24px 80px}
+.chapter{display:none;animation:fadeIn .3s ease}
+.chapter.active{display:block}
+@keyframes fadeIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+
+.chapter-num{font-size:.7rem;font-weight:600;text-transform:uppercase;letter-spacing:.08em;color:#2563EB;margin-bottom:4px}
+.chapter h2{font-size:1.25rem;font-weight:600;margin-bottom:4px}
+.subtitle{font-size:.88rem;color:#6B7280;margin-bottom:20px;line-height:1.6}
+
+.card{background:#F9FAFB;border:1px solid #E5E7EB;border-radius:12px;padding:18px 20px;margin:14px 0}
+.card.amber{border-left:4px solid #D97706}
+.card.green{border-left:4px solid #059669}
+.card.red{border-left:4px solid #DC2626}
+.card.blue{border-left:4px solid #2563EB}
+.card.purple{border-left:4px solid #7C3AED}
+.card-title{font-size:.7rem;font-weight:600;text-transform:uppercase;letter-spacing:.06em;color:#6B7280;margin-bottom:8px}
+
+table.tab{width:100%;border-collapse:collapse;font-size:.82rem;margin:8px 0}
+table.tab th{text-align:center;padding:7px 8px;color:#6B7280;font-weight:500;border-bottom:2px solid #E5E7EB;font-size:.74rem}
+table.tab td{text-align:center;padding:7px 8px;border-bottom:1px solid #F3F4F6;font-family:'SF Mono',Menlo,Consolas,monospace;font-size:.82rem}
+table.tab td.hl{background:rgba(37,99,235,.06);color:#2563EB;font-weight:600}
+table.tab td.hlg{background:rgba(5,150,105,.06);color:#059669;font-weight:600}
+table.tab td.hlr{background:rgba(220,38,38,.06);color:#DC2626;font-weight:600}
+table.tab td.hla{background:rgba(217,119,6,.06);color:#D97706;font-weight:600}
+table.tab td.hlp{background:rgba(124,58,237,.06);color:#7C3AED;font-weight:600}
+table.tab td.dim{color:#9CA3AF}
+table.tab tr.row-hl{background:rgba(37,99,235,.03)}
+table.tab tr.row-hlg{background:rgba(5,150,105,.03)}
+table.tab tr.row-hlr{background:rgba(220,38,38,.03)}
+
+.work-line{font-family:'SF Mono',Menlo,Consolas,monospace;font-size:.84rem;padding:3px 0;line-height:1.7;color:#374151}
+.work-line.result{color:#2563EB;font-weight:600}
+.work-line.good{color:#059669;font-weight:600}
+.work-line.bad{color:#DC2626;font-weight:600}
+.work-line.purple{color:#7C3AED;font-weight:600}
+
+.explain{font-size:.86rem;color:#6B7280;line-height:1.6;margin:8px 0}
+.explain strong{color:#1a1a1a;font-weight:600}
+
+.pill{display:inline-block;font-size:.72rem;font-weight:600;padding:3px 10px;border-radius:20px;text-transform:uppercase;letter-spacing:.03em}
+.pill.amber{background:rgba(217,119,6,.08);color:#D97706}
+.pill.green{background:rgba(5,150,105,.08);color:#059669}
+.pill.red{background:rgba(220,38,38,.08);color:#DC2626}
+.pill.blue{background:rgba(37,99,235,.08);color:#2563EB}
+
+.outcome{margin-top:16px;padding:12px 16px;border-radius:10px;font-size:.86rem;font-weight:500}
+.outcome.next{background:rgba(37,99,235,.05);border:1px solid rgba(37,99,235,.12);color:#2563EB}
+.outcome.done{background:rgba(5,150,105,.05);border:1px solid rgba(5,150,105,.12);color:#059669}
+.outcome.yes{background:rgba(5,150,105,.05);border:1px solid rgba(5,150,105,.12);color:#059669}
+.outcome.no{background:rgba(220,38,38,.05);border:1px solid rgba(220,38,38,.12);color:#DC2626}
+.outcome.cut{background:rgba(124,58,237,.05);border:1px solid rgba(124,58,237,.12);color:#7C3AED}
+
+.section-label{font-size:.72rem;font-weight:600;text-transform:uppercase;letter-spacing:.06em;color:#2563EB;margin:20px 0 8px;padding-top:16px;border-top:1px solid #F3F4F6}
+
+.check-row{display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid #F3F4F6;font-size:.86rem}
+.check-row:last-child{border-bottom:none}
+.check-icon{width:22px;height:22px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:.7rem;font-weight:700;flex-shrink:0}
+.check-icon.pass{background:rgba(5,150,105,.1);color:#059669}
+.check-icon.fail{background:rgba(220,38,38,.1);color:#DC2626}
+.check-math{font-family:'SF Mono',Menlo,Consolas,monospace;font-size:.82rem;color:#374151}
+.check-result{font-size:.8rem;font-weight:600;margin-left:auto}
+.check-result.pass{color:#059669}
+.check-result.fail{color:#DC2626}
+</style>
+</head>
+<body>
+
+<div class="nav">
+  <a href="index.html">← Cover Constraints</a>
+  <div class="step-dots" id="dots"></div>
+</div>
+<div class="progress"><div class="progress-fill" id="bar"></div></div>
+<div class="controls">
+  <button class="btn" id="prevBtn" onclick="go(-1)">← Back</button>
+  <button class="btn primary" id="nextBtn" onclick="go(1)">Next →</button>
+  <div class="step-label" id="stepLabel"></div>
+</div>
+<div class="content" id="content"></div>
+
+<script>
+let cur=0;
+
+const chapters=[
+
+// ===== 0: WHAT ARE COVER CONSTRAINTS =====
+{title:"What are Cover Constraints?",html:`
+<div class="chapter-num">Prologue</div>
+<h2>What are Cover Constraints?</h2>
+<div class="subtitle">The simplest topic in ILP. No tableau, no pivoting, no ratios. Just weights, capacity, and arithmetic.</div>
+
+<div class="card blue">
+<div class="card-title">The Idea — A Car Trip</div>
+<div class="explain" style="margin:0">
+You're packing a car for a road trip. The trunk holds <strong>18 kg</strong>. You have <strong>5 bags</strong> to consider:<br><br>
+• Bag 1: 3 kg (clothes)<br>
+• Bag 2: 4 kg (food)<br>
+• Bag 3: 12 kg (camping gear)<br>
+• Bag 4: 8 kg (tools)<br>
+• Bag 5: 6 kg (sports equipment)<br><br>
+Now — can you fit ALL 5 bags? 3+4+12+8+6 = 33. Way too much. But that's obvious and not very useful.<br><br>
+The interesting question is: what's the <strong>smallest group</strong> of bags that's already too heavy? Not all 5 — just a specific few.<br><br>
+Look at bags <strong>{1, 2, 4, 5}</strong> (leave out the camping gear for now). They weigh 3+4+8+6 = 21 > 18. <strong>These four alone already don't fit.</strong> That's a cover — a subset of items that's too heavy.<br><br>
+Notice: we didn't use all 5 bags. Just 4 of them. A cover is a <strong>specific group you pick</strong> — it could be 3 items, 4 items, or any number. It doesn't have to be all of them. The exercise tells you which group to check.
+</div>
+</div>
+
+<div class="card blue">
+<div class="card-title">Why Only a Subset?</div>
+<div class="explain" style="margin:0">
+If you said "all 5 bags don't fit" — that's true but not very helpful. Of course all 5 don't fit. That's a cover, but it's not <strong>minimal</strong>.<br><br>
+A <strong>minimal cover</strong> is the tightest possible group — the smallest gang of items that's still too heavy. If you kick anyone out, suddenly they fit. Every member is essential to making it overflow.<br><br>
+In our example: bags {1, 2, 4, 5} weigh 21 (too heavy). But kick out any one of them:<br>
+• Without bag 1: 4+8+6 = 18 → fits!<br>
+• Without bag 2: 3+8+6 = 17 → fits!<br>
+• Without bag 4: 3+4+6 = 13 → fits!<br>
+• Without bag 5: 3+4+8 = 15 → fits!<br><br>
+Every single bag matters. That's what makes it <strong>minimal</strong>.<br><br>
+A problem might have 6, 7, or 10 variables — but the minimal cover might only be 3 or 4 of them. It's the critical group where the overflow happens.
+</div>
+</div>
+
+<div class="card blue">
+<div class="card-title">So What's the Constraint?</div>
+<div class="explain" style="margin:0">
+Since these 4 bags can't all fit, at least one must stay home. The constraint is:<br><br>
+<strong>x₁ + x₂ + x₄ + x₅ ≤ 3</strong><br><br>
+"Out of these 4 bags, you can bring at most 3." That's a cover constraint. Simple as that.
+</div>
+</div>
+
+<div class="card blue">
+<div class="card-title">Where Does This Fit?</div>
+<div class="explain" style="margin:0">
+Cover constraints are a type of <strong>cutting plane</strong> — just like Gomory cuts. They add a new inequality to tighten the problem.<br><br>
+But they're much simpler:<br>
+• <strong>Gomory cuts</strong> → need a simplex tableau, fractional parts, dual simplex. For integer problems.<br>
+• <strong>Cover constraints</strong> → just arithmetic. For binary (0-1) knapsack problems.<br><br>
+No solving. No tableau. Just <strong>prove and write</strong>.
+</div>
+</div>
+
+<div class="card blue">
+<div class="card-title">Key Terms</div>
+<div class="explain" style="margin:0">
+<strong>Cover</strong> = a group of items (not necessarily all) whose weights exceed capacity. They can't all fit.<br><br>
+<strong>Minimal cover</strong> = the smallest such group. Remove any one item and it fits again. Every item is necessary to make it too heavy.<br><br>
+<strong>Cover inequality</strong> = the constraint you write: sum of x's in the group ≤ group size − 1.<br><br>
+<strong>Strengthening</strong> = adding outside variables to the left side without changing the right side. Makes the constraint tighter.
+</div>
+</div>
+
+<div class="card blue">
+<div class="card-title">What You Do on the Exam</div>
+<div class="explain" style="margin:0">
+The exercise gives you a group and asks you to:<br><br>
+<strong>①</strong> Prove it's a cover (add up weights, check > capacity)<br>
+<strong>②</strong> Prove it's minimal (remove each item one at a time, check all ≤ capacity)<br>
+<strong>③</strong> Write the inequality<br>
+<strong>④</strong> Strengthen it (check if outside items are heavier than all items in the cover)<br><br>
+That's the whole exam task. Just arithmetic and counting.
+</div>
+</div>
+`},
+
+// ===== 1: THE PROBLEM =====
+{title:"The Problem",html:`
+<div class="chapter-num">Step 1</div>
+<h2>The Problem</h2>
+<div class="subtitle">Here's our binary knapsack problem.</div>
+
+<div class="card blue">
+<div class="card-title">Problem</div>
+<div class="work-line result">max 18x₁ + 20x₂ + 36x₃ + 20x₄ + 12x₅</div>
+<div class="work-line">s.t. 3x₁ + 4x₂ + 12x₃ + 8x₄ + 6x₅ ≤ 18</div>
+<div class="work-line">x₁, …, x₅ ∈ {0, 1}</div>
+</div>
+
+<div class="card">
+<div class="card-title">Item Weights — This Is All We Need</div>
+<table class="tab">
+<tr><th>Item</th><th>Weight</th></tr>
+<tr><td>x₁</td><td>3</td></tr>
+<tr><td>x₂</td><td>4</td></tr>
+<tr><td>x₃</td><td>12</td></tr>
+<tr><td>x₄</td><td>8</td></tr>
+<tr><td>x₅</td><td>6</td></tr>
+</table>
+<div class="explain" style="margin-top:8px"><strong>Capacity = 18.</strong> No profits needed. No ratios. Just weights.</div>
+</div>
+
+<div class="card amber">
+<div class="card-title">The Task</div>
+<div class="explain" style="margin:0">
+<strong>Part 1:</strong> Prove that C = {1, 2, 4, 5} is a minimal cover set. Write the inequality.<br>
+<strong>Part 2:</strong> Strengthen the inequality.
+</div>
+</div>
+
+<div class="outcome next">→ Let's start by checking if {1, 2, 4, 5} is a cover.</div>
+`},
+
+// ===== 2: IS IT A COVER =====
+{title:"Is It a Cover?",html:`
+<div class="chapter-num">Step 2 — Part 1a</div>
+<h2>Is C = {1, 2, 4, 5} a Cover?</h2>
+<div class="subtitle">A cover means: the total weight of the group exceeds capacity. Can all four items fit in the bag at the same time?</div>
+
+<div class="card">
+<div class="card-title">The Group</div>
+<div class="explain" style="margin:0">Our group is items 1, 2, 4, and 5. Note: <strong>x₃ is NOT in this group</strong> — we're only looking at these four.</div>
+<table class="tab">
+<tr><th>Item</th><th>Weight</th><th>In group?</th></tr>
+<tr class="row-hl"><td>x₁</td><td class="hl">3</td><td class="hl">Yes</td></tr>
+<tr class="row-hl"><td>x₂</td><td class="hl">4</td><td class="hl">Yes</td></tr>
+<tr><td>x₃</td><td class="dim">12</td><td class="dim">No</td></tr>
+<tr class="row-hl"><td>x₄</td><td class="hl">8</td><td class="hl">Yes</td></tr>
+<tr class="row-hl"><td>x₅</td><td class="hl">6</td><td class="hl">Yes</td></tr>
+</table>
+</div>
+
+<div class="card green">
+<div class="card-title">Add Up the Weights</div>
+<div class="work-line">3 + 4 + 8 + 6</div>
+<div class="work-line">= 7 + 8 + 6</div>
+<div class="work-line">= 15 + 6</div>
+<div class="work-line result">= 21</div>
+<div class="work-line" style="margin-top:6px">21 > 18 (capacity)</div>
+<div class="work-line good">YES — it's a cover! These four items can't all fit.</div>
+</div>
+
+<div class="explain">The group weighs more than the bag can hold. So we know: in any valid solution, you can never have x₁ = x₂ = x₄ = x₅ = 1 all at once.</div>
+
+<div class="outcome yes">✓ Cover confirmed: total weight 21 > capacity 18. Now we need to check if it's minimal.</div>
+`},
+
+// ===== 3: IS IT MINIMAL =====
+{title:"Is It Minimal?",html:`
+<div class="chapter-num">Step 3 — Part 1b</div>
+<h2>Is the Cover Minimal?</h2>
+<div class="subtitle">A minimal cover means: every item in the group is necessary to make it too heavy. If you remove any single item, the rest should fit (≤ 18). We test every removal, one at a time.</div>
+
+<div class="card blue">
+<div class="card-title">What We're About to Do</div>
+<div class="explain" style="margin:0">
+Our cover has 4 items: {1, 2, 4, 5}. We need 4 checks.<br>
+For each item, we remove it, add up the remaining 3, and check if they fit (≤ 18).<br><br>
+<strong>If ALL four checks fit → it's minimal.</strong><br>
+If even one check still exceeds 18 → not minimal (that item was unnecessary).
+</div>
+</div>
+
+<div class="card">
+<div class="card-title">Check 1 — Remove x₁ (weight 3)</div>
+<div class="check-row">
+  <div class="check-icon pass">✓</div>
+  <div class="check-math">Remaining: {2, 4, 5} → 4 + 8 + 6 = <strong>18</strong></div>
+  <div class="check-result pass">18 ≤ 18 → fits</div>
+</div>
+<div class="explain">Without x₁, the group fits. So x₁ was necessary to make it overflow.</div>
+</div>
+
+<div class="card">
+<div class="card-title">Check 2 — Remove x₂ (weight 4)</div>
+<div class="check-row">
+  <div class="check-icon pass">✓</div>
+  <div class="check-math">Remaining: {1, 4, 5} → 3 + 8 + 6 = <strong>17</strong></div>
+  <div class="check-result pass">17 ≤ 18 → fits</div>
+</div>
+<div class="explain">Without x₂, fits. x₂ was necessary.</div>
+</div>
+
+<div class="card">
+<div class="card-title">Check 3 — Remove x₄ (weight 8)</div>
+<div class="check-row">
+  <div class="check-icon pass">✓</div>
+  <div class="check-math">Remaining: {1, 2, 5} → 3 + 4 + 6 = <strong>13</strong></div>
+  <div class="check-result pass">13 ≤ 18 → fits</div>
+</div>
+<div class="explain">Without x₄, fits. x₄ was necessary.</div>
+</div>
+
+<div class="card">
+<div class="card-title">Check 4 — Remove x₅ (weight 6)</div>
+<div class="check-row">
+  <div class="check-icon pass">✓</div>
+  <div class="check-math">Remaining: {1, 2, 4} → 3 + 4 + 8 = <strong>15</strong></div>
+  <div class="check-result pass">15 ≤ 18 → fits</div>
+</div>
+<div class="explain">Without x₅, fits. x₅ was necessary.</div>
+</div>
+
+<div class="card green">
+<div class="card-title">Result</div>
+<div class="explain" style="margin:0">
+All four removals fit. Every single item was necessary to make the group exceed 18. No item is redundant.<br><br>
+<strong>C = {1, 2, 4, 5} is a minimal cover.</strong> ✓
+</div>
+</div>
+
+<div class="outcome yes">✓ Minimal cover confirmed. Every item is necessary. Now let's write the inequality.</div>
+`},
+
+// ===== 4: WRITE THE INEQUALITY =====
+{title:"Write the Inequality",html:`
+<div class="chapter-num">Step 4 — Part 1c</div>
+<h2>Write the Cover Inequality</h2>
+<div class="subtitle">Now we turn the minimal cover into a constraint. This is the easiest part — but the "why" behind it is important to understand.</div>
+
+<div class="card blue">
+<div class="card-title">The Logic</div>
+<div class="explain" style="margin:0">
+We proved that all 4 items {1, 2, 4, 5} together weigh 21, which is more than 18. So they <strong>can't all be in the bag at the same time</strong>.<br><br>
+If all 4 can't fit → at least 1 must stay out → at most <strong>4 − 1 = 3</strong> can go in.<br><br>
+That's where the number 3 comes from. It's always <strong>one less than the group size</strong>. Because if the whole group overflows, you need to leave at least one behind.
+</div>
+</div>
+
+<div class="card amber">
+<div class="card-title">Why 3 and Not 18?</div>
+<div class="explain" style="margin:0">
+The original constraint uses weights: 3x₁ + 4x₂ + 8x₄ + 6x₅ ≤ <strong>18</strong><br><br>
+The cover constraint doesn't use weights at all: x₁ + x₂ + x₄ + x₅ ≤ <strong>3</strong><br><br>
+These are completely different constraints. The original talks about <strong>how heavy</strong> things are. The cover constraint talks about <strong>how many</strong> things you can take. It's just counting — every x is either 0 or 1, so the left side is simply "how many items are in the bag."<br><br>
+The 3 has nothing to do with the capacity 18. It comes purely from: <strong>group size (4) minus 1 = 3</strong>.
+</div>
+</div>
+
+<div class="card">
+<div class="card-title">The General Formula</div>
+<div class="explain" style="margin:0">For any minimal cover with <strong>n</strong> items:</div>
+<div class="work-line result" style="margin-top:6px">sum of x's in the cover ≤ n − 1</div>
+<div class="explain" style="margin-top:8px">
+Examples:<br>
+• 3 items in the cover → ≤ <strong>2</strong><br>
+• 4 items in the cover → ≤ <strong>3</strong><br>
+• 5 items in the cover → ≤ <strong>4</strong><br>
+• 7 items in the cover → ≤ <strong>6</strong><br><br>
+Always one less. Because "all of them overflow" means "at most all-minus-one can fit."
+</div>
+</div>
+
+<div class="card">
+<div class="card-title">Apply It to Our Cover</div>
+<div class="work-line">Cover = {1, 2, 4, 5} → 4 items</div>
+<div class="work-line">n − 1 = 4 − 1 = 3</div>
+</div>
+
+<div class="card purple">
+<div class="card-title">The Cover Inequality</div>
+<div class="work-line purple" style="font-size:1rem">x₁ + x₂ + x₄ + x₅ ≤ 3</div>
+<div class="explain" style="margin-top:8px">
+<strong>No weights.</strong> Every x is just 1. The weights were only used to prove the cover. The inequality itself just counts: "at most 3 of these 4 items can be in the bag."<br><br>
+Notice x₃ is missing — it wasn't in the cover. The cover constraint only involves the variables that are in the cover group.
+</div>
+</div>
+
+<div class="card">
+<div class="card-title">What About the Original Constraint?</div>
+<div class="explain" style="margin:0">
+The original constraint still exists:<br>
+3x₁ + 4x₂ + 12x₃ + 8x₄ + 6x₅ ≤ 18<br><br>
+The cover inequality is an <strong>extra</strong> constraint you add on top. Both live in the problem together:<br>
+• Original: "total weight can't exceed 18"<br>
+• Cover: "also, at most 3 of {1,2,4,5} can be in"<br><br>
+Together they give the solver more information to work with.
+</div>
+</div>
+
+<div class="outcome cut">✂ Cover inequality: x₁ + x₂ + x₄ + x₅ ≤ 3. Now let's strengthen it.</div>
+`},
+
+// ===== 5: STRENGTHEN =====
+{title:"Strengthen the Inequality",html:`
+<div class="chapter-num">Step 5 — Part 2</div>
+<h2>Strengthening the Cover Inequality</h2>
+<div class="subtitle">Can we make the constraint even tighter? Sometimes yes — by adding outside variables "for free."</div>
+
+<div class="card blue">
+<div class="card-title">The Idea</div>
+<div class="explain" style="margin:0">
+Look at variables that are <strong>NOT</strong> in the cover. If one of them is <strong>heavier than every item in the cover</strong>, it can join the left side of the inequality without changing the right side.<br><br>
+Why? Because if this heavy item could replace any cover member and still make the group too heavy, then it's subject to the same restriction.
+</div>
+</div>
+
+<div class="section-label" style="border-top:none;margin-top:0;padding-top:0">Who's Not in the Cover?</div>
+
+<div class="explain">Our cover is {1, 2, 4, 5}. The only item NOT in the cover is <strong>x₃</strong> (weight 12).</div>
+
+<div class="section-label">Is x₃ Heavier Than Every Item in the Cover?</div>
+
+<div class="card">
+<div class="card-title">Compare x₃ (weight 12) to Each Cover Member</div>
+<div class="check-row">
+  <div class="check-icon pass">✓</div>
+  <div class="check-math">12 > 3 (x₁'s weight)</div>
+  <div class="check-result pass">Heavier</div>
+</div>
+<div class="check-row">
+  <div class="check-icon pass">✓</div>
+  <div class="check-math">12 > 4 (x₂'s weight)</div>
+  <div class="check-result pass">Heavier</div>
+</div>
+<div class="check-row">
+  <div class="check-icon pass">✓</div>
+  <div class="check-math">12 > 8 (x₄'s weight)</div>
+  <div class="check-result pass">Heavier</div>
+</div>
+<div class="check-row">
+  <div class="check-icon pass">✓</div>
+  <div class="check-math">12 > 6 (x₅'s weight)</div>
+  <div class="check-result pass">Heavier</div>
+</div>
+</div>
+
+<div class="explain">x₃ is heavier than ALL of them. That means if you swap x₃ in for any cover member, the group is even heavier. So x₃ is subject to the same limit.</div>
+
+<div class="section-label">Proof — Every Group of 4 Including x₃ Exceeds 18</div>
+
+<div class="card">
+<div class="card-title">Check All Subsets of Size 4</div>
+<div class="check-row">
+  <div class="check-icon pass">✓</div>
+  <div class="check-math">{1,2,3,4} → 3+4+12+8 = <strong>27</strong></div>
+  <div class="check-result pass">> 18</div>
+</div>
+<div class="check-row">
+  <div class="check-icon pass">✓</div>
+  <div class="check-math">{1,2,3,5} → 3+4+12+6 = <strong>25</strong></div>
+  <div class="check-result pass">> 18</div>
+</div>
+<div class="check-row">
+  <div class="check-icon pass">✓</div>
+  <div class="check-math">{1,2,4,5} → 3+4+8+6 = <strong>21</strong></div>
+  <div class="check-result pass">> 18</div>
+</div>
+<div class="check-row">
+  <div class="check-icon pass">✓</div>
+  <div class="check-math">{1,3,4,5} → 3+12+8+6 = <strong>29</strong></div>
+  <div class="check-result pass">> 18</div>
+</div>
+<div class="check-row">
+  <div class="check-icon pass">✓</div>
+  <div class="check-math">{2,3,4,5} → 4+12+8+6 = <strong>30</strong></div>
+  <div class="check-result pass">> 18</div>
+</div>
+<div class="explain">Every group of 4 items exceeds 18. So at most 3 of ANY 4 items can fit — including x₃.</div>
+</div>
+
+<div class="section-label">Write the Strengthened Inequality</div>
+
+<div class="card purple">
+<div class="card-title">Strengthened Cover Inequality</div>
+<div class="work-line" style="color:#6B7280">Original: x₁ + x₂ + x₄ + x₅ ≤ 3</div>
+<div class="work-line purple" style="font-size:1rem;margin-top:6px">Strengthened: x₁ + x₂ + x₃ + x₄ + x₅ ≤ 3</div>
+<div class="explain" style="margin-top:8px">
+We added x₃ to the left side. The right side <strong>stays 3</strong> — it never changes. It's always (original cover size − 1).<br><br>
+This is stronger because it now restricts all 5 variables with the same limit of 3, instead of just 4 variables.
+</div>
+</div>
+
+<div class="outcome cut">✂ Strengthened: x₁ + x₂ + x₃ + x₄ + x₅ ≤ 3. Tighter constraint, same right-hand side.</div>
+`},
+
+// ===== 6: SUMMARY =====
+{title:"Summary",html:`
+<div class="chapter-num">Epilogue</div>
+<h2>The Cover Constraints Recipe</h2>
+<div class="subtitle">Everything in one place.</div>
+
+<div class="card blue">
+<div class="card-title">The Steps</div>
+<div class="explain" style="margin:0">
+<strong>1.</strong> You're given a group of items (the proposed cover).<br>
+<strong>2.</strong> Add up their weights. Is the total > capacity? If yes → it's a cover.<br>
+<strong>3.</strong> Remove each item one at a time. Does every removal make it fit (≤ capacity)? If yes → it's minimal.<br>
+<strong>4.</strong> Write the inequality: sum of x's in the cover ≤ group size − 1.<br>
+<strong>5.</strong> Look at items NOT in the cover. If one is heavier than ALL cover members → add it to the left side. Right side stays the same.
+</div>
+</div>
+
+<div class="card">
+<div class="card-title">Key Things to Remember</div>
+<div class="explain" style="margin:0">
+• Cover constraints are for <strong>binary (0-1)</strong> knapsack problems only<br>
+• You only need <strong>weights and capacity</strong> — no profits, no ratios, no tableau<br>
+• The cover inequality has <strong>no weights</strong> — every x is just 1, you're counting items<br>
+• The right side is always <strong>group size − 1</strong> and never changes when strengthening<br>
+• An outside variable can be added only if it's <strong>heavier than every</strong> item in the cover<br>
+• On the exam: the cover group is <strong>given to you</strong>. You just prove and write.
+</div>
+</div>
+
+<div class="card">
+<div class="card-title">How It Fits with Other Methods</div>
+<table class="tab">
+<tr><th></th><th>Binary Problems</th><th>Integer Problems</th></tr>
+<tr><td style="text-align:left;font-family:inherit;color:#6B7280">Solve LP relaxation</td><td>Greedy ratio</td><td>Simplex</td></tr>
+<tr><td style="text-align:left;font-family:inherit;color:#6B7280">Cutting plane</td><td class="hlp">Cover constraints</td><td>Gomory cuts</td></tr>
+<tr><td style="text-align:left;font-family:inherit;color:#6B7280">Find optimal</td><td>B&B (greedy)</td><td>B&B (dual simplex)</td></tr>
+</table>
+</div>
+
+<div class="card">
+<div class="card-title">What We Did</div>
+<table class="tab">
+<tr><th>Step</th><th>What</th><th>Result</th></tr>
+<tr><td>Cover?</td><td class="check-math">3+4+8+6 = 21 > 18</td><td class="hlg">Yes ✓</td></tr>
+<tr><td>Minimal?</td><td class="check-math">All 4 removals ≤ 18</td><td class="hlg">Yes ✓</td></tr>
+<tr><td>Inequality</td><td class="check-math">x₁+x₂+x₄+x₅ ≤ 3</td><td class="hlp">Written ✓</td></tr>
+<tr><td>Strengthen</td><td class="check-math">x₃ (12) > all in cover</td><td class="hlp">x₁+x₂+x₃+x₄+x₅ ≤ 3</td></tr>
+</table>
+</div>
+
+<div class="outcome done">★ Done. The simplest ILP topic — just arithmetic, counting, and comparing weights. No solving required.</div>
+`}
+];
+
+function render(){
+  const ch=chapters[cur];
+  document.getElementById('content').innerHTML=`<div class="chapter active">${ch.html}</div>`;
+  document.getElementById('stepLabel').textContent=`${cur+1} / ${chapters.length}`;
+  document.getElementById('prevBtn').disabled=cur===0;
+  document.getElementById('nextBtn').disabled=cur===chapters.length-1;
+  document.getElementById('bar').style.width=((cur+1)/chapters.length*100)+'%';
+  let dots='';
+  chapters.forEach((_,i)=>{dots+=`<div class="dot${i===cur?' active':''}" onclick="goTo(${i})"></div>`;});
+  document.getElementById('dots').innerHTML=dots;
+  window.scrollTo({top:0,behavior:'smooth'});
+}
+function go(d){cur=Math.max(0,Math.min(chapters.length-1,cur+d));render();}
+function goTo(i){cur=i;render();}
+document.addEventListener('keydown',e=>{if(e.key==='ArrowRight')go(1);if(e.key==='ArrowLeft')go(-1);});
+render();
+</script>
+</body>
+</html>
