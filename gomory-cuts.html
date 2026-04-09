@@ -1,0 +1,656 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Gomory Cuts — Step by Step</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{background:#fff;color:#1a1a1a;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI','Helvetica Neue',sans-serif;-webkit-font-smoothing:antialiased;line-height:1.5}
+
+.nav{position:sticky;top:0;z-index:50;background:rgba(255,255,255,.92);backdrop-filter:blur(12px);border-bottom:1px solid #E5E7EB;padding:0 24px;display:flex;align-items:center;height:48px;gap:12px}
+.nav a{font-size:.9rem;font-weight:600;text-decoration:none;color:inherit}
+.nav a:hover{color:#2563EB}
+.nav .step-dots{display:flex;gap:5px;margin-left:auto;flex-wrap:wrap}
+.nav .dot{width:7px;height:7px;border-radius:50%;background:#E5E7EB;cursor:pointer;transition:all .2s}
+.nav .dot.active{background:#2563EB;transform:scale(1.4)}
+
+.progress{position:sticky;top:48px;z-index:49;height:3px;background:#F3F4F6}
+.progress-fill{height:100%;background:#2563EB;transition:width .4s ease}
+
+.controls{position:sticky;top:51px;z-index:48;background:rgba(255,255,255,.95);backdrop-filter:blur(8px);border-bottom:1px solid #F3F4F6;padding:8px 24px;display:flex;align-items:center;gap:10px;max-width:840px;margin:0 auto}
+.btn{padding:6px 16px;border-radius:8px;border:1px solid #E5E7EB;background:#fff;font-size:.8rem;font-weight:500;cursor:pointer;transition:all .15s;color:#374151}
+.btn:hover{background:#F9FAFB}
+.btn.primary{background:#2563EB;color:#fff;border-color:#2563EB}
+.btn.primary:hover{background:#1D4ED8}
+.btn:disabled{opacity:.3;cursor:default}
+.step-label{font-size:.78rem;color:#6B7280;margin-left:auto}
+
+.content{max-width:840px;margin:0 auto;padding:32px 24px 80px}
+.chapter{display:none;animation:fadeIn .3s ease}
+.chapter.active{display:block}
+@keyframes fadeIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+
+.chapter-num{font-size:.7rem;font-weight:600;text-transform:uppercase;letter-spacing:.08em;color:#2563EB;margin-bottom:4px}
+.chapter h2{font-size:1.25rem;font-weight:600;margin-bottom:4px}
+.subtitle{font-size:.88rem;color:#6B7280;margin-bottom:20px;line-height:1.6}
+
+.card{background:#F9FAFB;border:1px solid #E5E7EB;border-radius:12px;padding:18px 20px;margin:14px 0}
+.card.amber{border-left:4px solid #D97706}
+.card.green{border-left:4px solid #059669}
+.card.red{border-left:4px solid #DC2626}
+.card.blue{border-left:4px solid #2563EB}
+.card.purple{border-left:4px solid #7C3AED}
+.card-title{font-size:.7rem;font-weight:600;text-transform:uppercase;letter-spacing:.06em;color:#6B7280;margin-bottom:8px}
+
+table.tab{width:100%;border-collapse:collapse;font-size:.82rem;margin:8px 0}
+table.tab th{text-align:center;padding:7px 8px;color:#6B7280;font-weight:500;border-bottom:2px solid #E5E7EB;font-size:.74rem}
+table.tab td{text-align:center;padding:7px 8px;border-bottom:1px solid #F3F4F6;font-family:'SF Mono',Menlo,Consolas,monospace;font-size:.82rem}
+table.tab td.hl{background:rgba(37,99,235,.06);color:#2563EB;font-weight:600}
+table.tab td.hlg{background:rgba(5,150,105,.06);color:#059669;font-weight:600}
+table.tab td.hlr{background:rgba(220,38,38,.06);color:#DC2626;font-weight:600}
+table.tab td.hla{background:rgba(217,119,6,.06);color:#D97706;font-weight:600}
+table.tab td.hlp{background:rgba(124,58,237,.06);color:#7C3AED;font-weight:600}
+table.tab tr.row-hl{background:rgba(37,99,235,.03)}
+table.tab tr.row-hlp{background:rgba(124,58,237,.03)}
+
+.work-line{font-family:'SF Mono',Menlo,Consolas,monospace;font-size:.84rem;padding:3px 0;line-height:1.7;color:#374151}
+.work-line.result{color:#2563EB;font-weight:600}
+.work-line.good{color:#059669;font-weight:600}
+.work-line.bad{color:#DC2626;font-weight:600}
+.work-line.purple{color:#7C3AED;font-weight:600}
+.work-line.indent{padding-left:20px;color:#6B7280}
+
+.explain{font-size:.86rem;color:#6B7280;line-height:1.6;margin:8px 0}
+.explain strong{color:#1a1a1a;font-weight:600}
+
+.outcome{margin-top:16px;padding:12px 16px;border-radius:10px;font-size:.86rem;font-weight:500}
+.outcome.next{background:rgba(37,99,235,.05);border:1px solid rgba(37,99,235,.12);color:#2563EB}
+.outcome.cut{background:rgba(124,58,237,.05);border:1px solid rgba(124,58,237,.12);color:#7C3AED}
+.outcome.done{background:rgba(5,150,105,.05);border:1px solid rgba(5,150,105,.12);color:#059669}
+.outcome.bad{background:rgba(220,38,38,.05);border:1px solid rgba(220,38,38,.12);color:#DC2626}
+
+.numline{font-family:'SF Mono',Menlo,Consolas,monospace;font-size:.82rem;padding:12px 16px;background:#F9FAFB;border:1px solid #E5E7EB;border-radius:8px;margin:8px 0;white-space:pre;overflow-x:auto;line-height:1.6}
+
+.flow{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin:10px 0;font-size:.82rem;font-weight:500}
+.flow-step{padding:6px 12px;border-radius:8px;background:#F3F4F6;color:#6B7280}
+.flow-step.active{background:rgba(37,99,235,.08);color:#2563EB}
+.flow-step.done{background:rgba(5,150,105,.08);color:#059669}
+.flow-arrow{color:#D1D5DB}
+
+.section-label{font-size:.72rem;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:#2563EB;margin:28px 0 8px;padding-top:20px;border-top:1px solid #E5E7EB}
+.section-label:first-child{border-top:none;margin-top:0;padding-top:0}
+
+/* VERTICAL TIMELINE */
+.timeline{margin-top:28px;padding-top:20px;border-top:1px solid #E5E7EB}
+.timeline h4{font-size:.72rem;font-weight:600;text-transform:uppercase;letter-spacing:.06em;color:#6B7280;margin-bottom:14px}
+.tl-item{display:flex;gap:14px;position:relative;padding-bottom:0}
+.tl-track{display:flex;flex-direction:column;align-items:center;width:24px;flex-shrink:0}
+.tl-dot{width:14px;height:14px;border-radius:50%;border:2px solid #D1D5DB;background:#fff;flex-shrink:0;position:relative;z-index:1}
+.tl-dot.done{background:#059669;border-color:#059669}
+.tl-dot.done::after{content:'✓';color:#fff;font-size:8px;font-weight:700;position:absolute;top:50%;left:50%;transform:translate(-50%,-50%)}
+.tl-dot.active{border-color:#2563EB;background:rgba(37,99,235,.1);box-shadow:0 0 0 4px rgba(37,99,235,.1)}
+.tl-dot.active-amber{border-color:#D97706;background:rgba(217,119,6,.1);box-shadow:0 0 0 4px rgba(217,119,6,.1)}
+.tl-dot.active-purple{border-color:#7C3AED;background:rgba(124,58,237,.1);box-shadow:0 0 0 4px rgba(124,58,237,.1)}
+.tl-dot.active-green{border-color:#059669;background:rgba(5,150,105,.1);box-shadow:0 0 0 4px rgba(5,150,105,.1)}
+.tl-line{width:2px;flex-grow:1;background:#E5E7EB;min-height:12px}
+.tl-line.done{background:#059669}
+.tl-body{flex:1;padding-bottom:18px}
+.tl-title{font-size:.82rem;font-weight:600;color:#1a1a1a;margin-bottom:2px}
+.tl-title.muted{color:#9CA3AF;font-weight:500}
+.tl-title.done-text{color:#059669}
+.tl-math{font-family:'SF Mono',Menlo,Consolas,monospace;font-size:.78rem;color:#374151;line-height:1.65;margin-top:4px}
+.tl-math.muted{color:#C4C8CF}
+.tl-tag{display:inline-block;font-size:.68rem;font-weight:600;padding:1px 7px;border-radius:10px;margin-top:4px}
+.tl-tag.amber{background:rgba(217,119,6,.08);color:#D97706}
+.tl-tag.green{background:rgba(5,150,105,.08);color:#059669}
+.tl-tag.purple{background:rgba(124,58,237,.08);color:#7C3AED}
+.tl-tag.blue{background:rgba(37,99,235,.08);color:#2563EB}
+.tl-tag.gray{background:#F3F4F6;color:#9CA3AF}
+</style>
+</head>
+<body>
+
+<div class="nav">
+  <a href="index.html">← Gomory Cuts</a>
+  <div class="step-dots" id="dots"></div>
+</div>
+<div class="progress"><div class="progress-fill" id="bar"></div></div>
+<div class="controls">
+  <button class="btn" id="prevBtn" onclick="go(-1)">← Back</button>
+  <button class="btn primary" id="nextBtn" onclick="go(1)">Next →</button>
+  <div class="step-label" id="stepLabel"></div>
+</div>
+<div class="content" id="content"></div>
+
+<script>
+let cur=0;
+
+// Timeline data
+const tlStages=[
+{id:0,title:"LP Relaxation Solved",
+math:"x₁ = 4.2, x₂ = 1.2, Z = 18\nBasic: s₁, x₂, x₁, Z\nNon-basic: s₂, s₃\nBoth x₁ and x₂ fractional → need a cut",
+tag:"Fractional",tagClass:"amber"},
+
+{id:1,title:"Cut 1 — From x₁ row",
+math:"Row: x₁ + 0.2s₂ + 0.6s₃ = 4.2\nfp(0.2) = 0.2   fp(0.6) = 0.6   fp(4.2) = 0.2\n\nCut: 0.2s₂ + 0.6s₃ ≥ 0.2\nSurplus: −0.2s₂ − 0.6s₃ + S₄ = −0.2",
+tag:"✂ Cut",tagClass:"purple"},
+
+{id:2,title:"Dual Simplex Pivot #1",
+math:"S₄ leaves (RHS = −0.2)\nRatio test: s₂ → 1÷0.2 = 5,  s₃ → 2÷0.6 = 3.33\ns₃ enters (smallest)\nPivot element: −0.6",
+tag:"Pivot",tagClass:"blue"},
+
+{id:3,title:"Result — After Cut 1",
+math:"x₁ = 4 ✓ integer\nx₂ = 4/3 ≈ 1.33 ✗ fractional\nZ = 52/3 ≈ 17.33\n\nNon-basic now: s₂, S₄\nx₂ still fractional → need Cut 2",
+tag:"Partial",tagClass:"amber"},
+
+{id:4,title:"Cut 2 — From x₂ row",
+math:"Row: x₂ + (1/3)s₂ + (−2/3)S₄ = 4/3\nfp(1/3) = 1/3\nfp(−2/3) = −2/3 − (−1) = 1/3\nfp(4/3) = 4/3 − 1 = 1/3\n\nCut: (1/3)s₂ + (1/3)S₄ ≥ 1/3\nSurplus: −(1/3)s₂ − (1/3)S₄ + S₅ = −1/3",
+tag:"✂ Cut",tagClass:"purple"},
+
+{id:5,title:"Dual Simplex Pivot #2",
+math:"S₅ leaves (RHS = −1/3)\nRatio test: s₂ → (1/3)÷(1/3) = 1,  S₄ → (10/3)÷(1/3) = 10\ns₂ enters (smallest)\nPivot element: −1/3",
+tag:"Pivot",tagClass:"blue"},
+
+{id:6,title:"Done ★",
+math:"x₁ = 4 ✓ integer\nx₂ = 1 ✓ integer\nZ = 17 ★ Optimal\n\nVerify:\n−4 + 2(1) = −2 ≤ 4 ✓\n2(4) + 3(1) = 11 ≤ 12 ✓\n4 − 1 = 3 ≤ 3 ✓",
+tag:"Integer!",tagClass:"green"}
+];
+
+// chapterToStage: which stage is "current" at each chapter
+const chapterToStage=[-1,-1,0,2,3,4,4,5,6,6];
+
+function buildTimeline(chIdx){
+  const active=chapterToStage[chIdx];
+  if(active<0) return '';
+  let h='<div class="timeline"><h4>Progress</h4>';
+
+  tlStages.forEach((st,i)=>{
+    const isDone=i<active;
+    const isCurrent=i===active;
+    const isFuture=i>active;
+
+    let dotClass='tl-dot';
+    if(isDone) dotClass+=' done';
+    else if(isCurrent){
+      if(st.tagClass==='amber') dotClass+=' active-amber';
+      else if(st.tagClass==='purple') dotClass+=' active-purple';
+      else if(st.tagClass==='green') dotClass+=' active-green';
+      else dotClass+=' active';
+    }
+
+    let lineClass='tl-line';
+    if(isDone) lineClass+=' done';
+
+    const titleClass=isFuture?'tl-title muted':isDone?'tl-title done-text':'tl-title';
+    const mathClass=isFuture?'tl-math muted':'tl-math';
+
+    h+=`<div class="tl-item">`;
+    h+=`<div class="tl-track"><div class="${dotClass}"></div>${i<tlStages.length-1?`<div class="${lineClass}"></div>`:''}`;
+    h+=`</div>`;
+    h+=`<div class="tl-body">`;
+    h+=`<div class="${titleClass}">${st.title}</div>`;
+
+    if(!isFuture){
+      h+=`<div class="${mathClass}">${st.math.replace(/\n/g,'<br>')}</div>`;
+      h+=`<div class="tl-tag ${st.tagClass}">${st.tag}</div>`;
+    } else {
+      h+=`<div class="tl-tag gray">${st.tag}</div>`;
+    }
+
+    h+=`</div></div>`;
+  });
+
+  h+='</div>';
+  return h;
+}
+
+const chapters=[
+
+// ===== 0: PROLOGUE =====
+{title:"What is a Gomory Cut?",html:`
+<div class="chapter-num">Prologue</div>
+<h2>What is a Gomory Cut?</h2>
+<div class="subtitle">You've solved the LP relaxation. The answer is fractional. Now what?</div>
+
+<div class="card blue">
+<div class="card-title">The Idea</div>
+<div class="explain" style="margin:0">
+Say the LP gives you x₁ = 4.2. But you need a whole number.<br><br>
+That <strong>0.2 leftover</strong> has to come from somewhere. The Gomory cut looks at the non-basic variables and says: <strong>"you need to contribute at least 0.2 to cover this gap."</strong><br><br>
+This creates a new constraint that cuts off the fractional answer but keeps all integer answers safe. Re-solve. Still fractional? Another cut. Repeat.<br><br>
+Like <strong>tightening a belt</strong> one notch at a time.
+</div>
+</div>
+
+<div class="card blue">
+<div class="card-title">Gomory Cuts vs Branch & Bound</div>
+<div class="explain" style="margin:0">
+<strong>B&B</strong> = tree of many subproblems. Branches, pruning, backtracking.<br>
+<strong>Gomory</strong> = ONE problem. No tree. Just add constraints in a straight line.
+</div>
+</div>
+
+<div class="card blue">
+<div class="card-title">Quick Facts</div>
+<div class="explain" style="margin:0">
+• For <strong>integer</strong> variables (binary uses cover constraints)<br>
+• Needs a <strong>simplex tableau</strong><br>
+• Re-solve with <strong>dual simplex</strong><br>
+• Cut is <strong>always ≥</strong><br>
+• No artificial variables — just surplus
+</div>
+</div>
+`},
+
+// ===== 1: PROBLEM =====
+{title:"The Problem",html:`
+<div class="chapter-num">Step 1</div>
+<h2>The Problem</h2>
+
+<div class="card blue">
+<div class="work-line result">max Z = 4x₁ + x₂</div>
+<div class="work-line">s.t. −x₁ + 2x₂ ≤ 4</div>
+<div class="work-line">     2x₁ + 3x₂ ≤ 12</div>
+<div class="work-line">     x₁ − x₂ ≤ 3</div>
+<div class="work-line">     x₁, x₂ ≥ 0, <strong>integer</strong></div>
+</div>
+
+<div class="explain">First: solve the LP relaxation with simplex (already done for us).</div>
+`},
+
+// ===== 2: LP RESULT =====
+{title:"LP Result",html:`
+<div class="chapter-num">Step 2</div>
+<h2>LP Relaxation Result</h2>
+
+<div class="card">
+<div class="card-title">Simplex Tableau</div>
+<table class="tab">
+<tr><th></th><th>x₁</th><th>x₂</th><th>s₁</th><th>s₂</th><th>s₃</th><th>Z</th><th>RHS</th></tr>
+<tr><td>s₁</td><td>0</td><td>0</td><td>1</td><td>−0.2</td><td>1.4</td><td>0</td><td>5.8</td></tr>
+<tr><td>x₂</td><td>0</td><td>1</td><td>0</td><td>0.2</td><td>−0.4</td><td>0</td><td class="hla">1.2</td></tr>
+<tr><td>x₁</td><td>1</td><td>0</td><td>0</td><td>0.2</td><td>0.6</td><td>0</td><td class="hla">4.2</td></tr>
+<tr><td>Z</td><td>0</td><td>0</td><td>0</td><td>1</td><td>2</td><td>1</td><td>18</td></tr>
+</table>
+</div>
+
+<div class="card amber">
+<div class="work-line">x₁ = 4.2 ← fractional</div>
+<div class="work-line">x₂ = 1.2 ← fractional</div>
+<div class="work-line">Z = 18</div>
+<div class="explain" style="margin-top:6px"><strong>Basic:</strong> s₁, x₂, x₁, Z · <strong>Non-basic:</strong> s₂, s₃</div>
+</div>
+
+<div class="outcome bad">Both fractional → need a Gomory cut.</div>
+`},
+
+// ===== 3: THE COMPLETE FIRST CUT =====
+{title:"Cut 1 — The Full Story",html:`
+<div class="chapter-num">Step 3 — The First Cut</div>
+<h2>Generating, Adding, and Solving Cut 1</h2>
+<div class="subtitle">This is where the magic happens. We're going to pick a row from the tableau, turn it into a brand new constraint, add it back in, and re-solve. By the end of this page, one of our variables will become integer.</div>
+
+<div class="card blue">
+<div class="card-title">What's About to Happen</div>
+<div class="explain" style="margin:0">
+We'll go through 6 small steps on this page:<br><br>
+<strong>①</strong> Pick a row with a fractional RHS<br>
+<strong>②</strong> Learn how to take "fractional parts" (the key skill)<br>
+<strong>③</strong> Apply it to get the cut<br>
+<strong>④</strong> Convert the cut into a tableau row<br>
+<strong>⑤</strong> Add it to the tableau<br>
+<strong>⑥</strong> Re-solve with dual simplex
+</div>
+</div>
+
+<div class="section-label" style="border-top:none;margin-top:0;padding-top:0">① Pick a Row</div>
+
+<div class="explain">Look at the RHS column. Which rows have fractional values?</div>
+
+<div class="card">
+<table class="tab">
+<tr><th></th><th>x₁</th><th>x₂</th><th>s₁</th><th>s₂</th><th>s₃</th><th>Z</th><th>RHS</th></tr>
+<tr><td>s₁</td><td>0</td><td>0</td><td>1</td><td>−0.2</td><td>1.4</td><td>0</td><td>5.8</td></tr>
+<tr><td>x₂</td><td>0</td><td>1</td><td>0</td><td>0.2</td><td>−0.4</td><td>0</td><td class="hla">1.2</td></tr>
+<tr class="row-hl"><td>x₁</td><td>1</td><td>0</td><td>0</td><td class="hl">0.2</td><td class="hl">0.6</td><td>0</td><td class="hl">4.2</td></tr>
+<tr><td>Z</td><td>0</td><td>0</td><td>0</td><td>1</td><td>2</td><td>1</td><td>18</td></tr>
+</table>
+</div>
+
+<div class="explain">x₁ row has RHS = 4.2 (fractional) and x₂ row has RHS = 1.2 (fractional). We can pick either. Let's go with the <strong>x₁ row</strong>.</div>
+
+<div class="explain">From this row, we only care about the <strong>non-basic columns</strong> (s₂ and s₃) and the <strong>RHS</strong>. We ignore everything else — the basic columns (x₁, x₂, s₁) always have clean 0s and 1s so they contribute nothing.</div>
+
+<div class="card">
+<div class="card-title">The Numbers That Matter</div>
+<div class="work-line">s₂ = 0.2</div>
+<div class="work-line">s₃ = 0.6</div>
+<div class="work-line">RHS = 4.2</div>
+</div>
+
+<div class="section-label">② The Key Skill — Fractional Parts</div>
+
+<div class="explain">Before we can write the cut, you need one skill: taking the <strong>fractional part</strong> of a number. It sounds fancy but it's dead simple.</div>
+
+<div class="card blue">
+<div class="card-title">The Formula</div>
+<div class="work-line result">fp(number) = number − floor(number)</div>
+<div class="explain" style="margin-top:4px">Where <strong>floor</strong> = the nearest whole number <strong>BELOW</strong> it on the number line. Always go down (left).</div>
+</div>
+
+<div class="card">
+<div class="card-title">For Positive Numbers — Just Drop the Whole Part</div>
+<div class="work-line">4.2 → floor = 4 → fp = 4.2 − 4 = <strong>0.2</strong></div>
+<div class="work-line">0.6 → floor = 0 → fp = 0.6 − 0 = <strong>0.6</strong></div>
+<div class="work-line">3.0 → floor = 3 → fp = 3.0 − 3 = <strong>0.0</strong></div>
+<div class="explain">Easy. Just keep what's after the decimal point.</div>
+</div>
+
+<div class="card amber">
+<div class="card-title">For Negative Numbers — Be Careful</div>
+<div class="explain" style="margin:0">Floor goes DOWN, meaning further from zero. Imagine a number line:</div>
+<div class="numline">... −2    −1    0    1    2 ...
+          ↑
+       −0.2 sits here, between −1 and 0
+       Floor goes LEFT → floor(−0.2) = −1</div>
+<div class="explain">Now subtract: fp = −0.2 − (−1) = −0.2 + 1 = <strong>0.8</strong></div>
+<div class="explain" style="margin-top:8px">More examples:</div>
+<div class="work-line">fp(−0.4) = −0.4 − (−1) = −0.4 + 1 = <strong>0.6</strong></div>
+<div class="work-line">fp(−0.6) = −0.6 − (−1) = −0.6 + 1 = <strong>0.4</strong></div>
+<div class="work-line">fp(−1.4) = −1.4 − (−2) = −1.4 + 2 = <strong>0.6</strong></div>
+<div class="explain" style="margin-top:8px">The result is <strong>always positive</strong>, always between 0 and 1. The two negatives cancel out (minus a minus = plus).</div>
+</div>
+
+<div class="section-label">③ Apply It to Our Row</div>
+
+<div class="explain">Now we take the fractional part of our three numbers. All are positive here, so it's the easy case:</div>
+
+<div class="card purple">
+<div class="card-title">Fractional Parts</div>
+<div class="work-line">s₂ = 0.2 → fp(0.2) = 0.2 − 0 = <strong>0.2</strong></div>
+<div class="work-line">s₃ = 0.6 → fp(0.6) = 0.6 − 0 = <strong>0.6</strong></div>
+<div class="work-line">RHS = 4.2 → fp(4.2) = 4.2 − 4 = <strong>0.2</strong></div>
+</div>
+
+<div class="explain">Now plug them into the Gomory cut formula. The formula is always the same:</div>
+
+<div class="card purple">
+<div class="card-title">The Gomory Cut</div>
+<div class="work-line">fp(s₂ coeff) × s₂ + fp(s₃ coeff) × s₃ ≥ fp(RHS)</div>
+<div class="work-line purple" style="font-size:.95rem;margin-top:6px">0.2s₂ + 0.6s₃ ≥ 0.2</div>
+<div class="explain" style="margin-top:6px">That's it. That's our first Gomory cut. Always ≥, always positive coefficients.</div>
+</div>
+
+<div class="section-label">④ Convert Into a Tableau Row</div>
+
+<div class="explain">We can't just throw an inequality into the tableau. We need to convert it into an equation by subtracting a <strong>surplus variable</strong> (S₄):</div>
+
+<div class="card">
+<div class="work-line">0.2s₂ + 0.6s₃ <strong>− S₄</strong> = 0.2</div>
+<div class="explain" style="margin-top:8px">Then multiply everything by <strong>−1</strong>. This does two things:<br>
+• Makes S₄ positive (+1) so it can be basic<br>
+• Makes the RHS negative, which triggers dual simplex</div>
+<div class="work-line purple" style="margin-top:8px">−0.2s₂ − 0.6s₃ + S₄ = −0.2</div>
+<div class="explain" style="margin-top:8px">No artificial variable needed — dual simplex handles it.</div>
+</div>
+
+<div class="section-label">⑤ Add to the Tableau</div>
+
+<div class="explain">Drop this new row into the tableau. S₄ gets its own column:</div>
+
+<div class="card">
+<div class="card-title">Tableau with Cut 1 Added</div>
+<table class="tab">
+<tr><th></th><th>x₁</th><th>x₂</th><th>s₁</th><th>s₂</th><th>s₃</th><th>S₄</th><th>Z</th><th>RHS</th></tr>
+<tr><td>s₁</td><td>0</td><td>0</td><td>1</td><td>−0.2</td><td>1.4</td><td>0</td><td>0</td><td>5.8</td></tr>
+<tr><td>x₂</td><td>0</td><td>1</td><td>0</td><td>0.2</td><td>−0.4</td><td>0</td><td>0</td><td>1.2</td></tr>
+<tr><td>x₁</td><td>1</td><td>0</td><td>0</td><td>0.2</td><td>0.6</td><td>0</td><td>0</td><td>4.2</td></tr>
+<tr class="row-hlp"><td>S₄</td><td>0</td><td>0</td><td>0</td><td class="hlp">−0.2</td><td class="hlp">−0.6</td><td class="hlp">1</td><td>0</td><td class="hlr">−0.2</td></tr>
+<tr><td>Z</td><td>0</td><td>0</td><td>0</td><td>1</td><td>2</td><td>0</td><td>1</td><td>18</td></tr>
+</table>
+</div>
+
+<div class="explain">The new S₄ row has a <strong>negative RHS</strong> (−0.2). The Z row is all non-negative. That's the classic setup for <strong>dual simplex</strong>: dual feasible but not primal feasible.</div>
+
+<div class="section-label">⑥ Dual Simplex Pivot</div>
+
+<div class="explain"><strong>S₄ leaves</strong> the basis (it has the most negative RHS: −0.2). Now who enters?</div>
+
+<div class="card">
+<div class="card-title">Find the Entering Variable</div>
+<div class="explain" style="margin:0">Look at the <strong>negative</strong> values in the S₄ row:</div>
+<div class="work-line" style="margin-top:6px">s₂: −0.2</div>
+<div class="work-line">s₃: −0.6</div>
+<div class="explain" style="margin-top:8px">Do the ratio test with the Z row (Z value ÷ absolute value):</div>
+<div class="work-line">s₂: 1 ÷ 0.2 = <strong>5</strong></div>
+<div class="work-line">s₃: 2 ÷ 0.6 = <strong>3.33</strong></div>
+<div class="work-line result" style="margin-top:6px">Smallest = 3.33 → s₃ enters. Pivot on −0.6</div>
+</div>
+
+<div class="explain">Normalize the S₄ row (divide by −0.6), then eliminate s₃ from all other rows. Standard pivot operations.</div>
+
+<div class="outcome cut">✂ Cut 1 complete. Generated → added → solved. Let's see what we got.</div>
+`},
+
+// ===== 6: RESULT CUT 1 =====
+{title:"After Cut 1",html:`
+<div class="chapter-num">Step 6</div>
+<h2>After Cut 1</h2>
+
+<div class="card">
+<table class="tab">
+<tr><th></th><th>x₁</th><th>x₂</th><th>s₁</th><th>s₂</th><th>s₃</th><th>S₄</th><th>Z</th><th>RHS</th></tr>
+<tr><td>s₁</td><td>0</td><td>0</td><td>1</td><td>−2/3</td><td>0</td><td>7/3</td><td>0</td><td>16/3</td></tr>
+<tr><td>x₂</td><td>0</td><td>1</td><td>0</td><td>1/3</td><td>0</td><td>−2/3</td><td>0</td><td class="hla">4/3</td></tr>
+<tr><td>x₁</td><td>1</td><td>0</td><td>0</td><td>0</td><td>0</td><td>1</td><td>0</td><td class="hlg">4</td></tr>
+<tr><td>s₃</td><td>0</td><td>0</td><td>0</td><td>1/3</td><td>1</td><td>−5/3</td><td>0</td><td>1/3</td></tr>
+<tr><td>Z</td><td>0</td><td>0</td><td>0</td><td>1/3</td><td>0</td><td>10/3</td><td>1</td><td>52/3</td></tr>
+</table>
+</div>
+
+<div class="card green">
+<div class="work-line good">x₁ = 4 ✓</div>
+<div class="work-line bad">x₂ = 4/3 ≈ 1.33 ✗</div>
+<div class="work-line">Z = 52/3 ≈ 17.33</div>
+</div>
+
+<div class="explain">x₁ fixed! x₂ still fractional. Cut 2 from <strong>this</strong> tableau (never go back).</div>
+`},
+
+// ===== 7: BUILD CUT 2 =====
+{title:"Building Cut 2",html:`
+<div class="chapter-num">Step 7</div>
+<h2>Building the Second Gomory Cut</h2>
+
+<div class="section-label" style="border-top:none;margin-top:0;padding-top:0">Part 1 — Non-Basic Now</div>
+<div class="card">
+<div class="explain" style="margin:0"><strong>Basic:</strong> s₁, x₂, x₁, s₃, Z · <strong>Non-basic:</strong> s₂, S₄</div>
+</div>
+
+<div class="section-label">Part 2 — x₂ Row</div>
+<div class="card">
+<table class="tab">
+<tr><th></th><th>x₁</th><th>x₂</th><th>s₁</th><th>s₂</th><th>s₃</th><th>S₄</th><th>Z</th><th>RHS</th></tr>
+<tr class="row-hl"><td>x₂</td><td>0</td><td>1</td><td>0</td><td class="hl">1/3</td><td>0</td><td class="hl">−2/3</td><td>0</td><td class="hl">4/3</td></tr>
+</table>
+<div class="work-line" style="margin-top:6px">s₂ = 1/3, S₄ = −2/3, RHS = 4/3</div>
+</div>
+
+<div class="section-label">Part 3 — Fractional Parts</div>
+<div class="card purple">
+<div class="work-line">s₂ = 1/3 → fp = 1/3 − 0 = <strong>1/3</strong></div>
+<div class="work-line" style="margin-top:6px">S₄ = −2/3 → floor(−2/3) = −1</div>
+<div class="work-line indent">fp = −2/3 − (−1) = −2/3 + 1 = <strong>1/3</strong></div>
+<div class="work-line" style="margin-top:6px">RHS = 4/3 → floor(4/3) = 1</div>
+<div class="work-line indent">fp = 4/3 − 1 = <strong>1/3</strong></div>
+</div>
+
+<div class="section-label">Part 4 — Write It</div>
+<div class="card purple">
+<div class="work-line purple" style="font-size:.95rem">(1/3)s₂ + (1/3)S₄ ≥ 1/3</div>
+</div>
+<div class="outcome cut">✂ Cut 2: (1/3)s₂ + (1/3)S₄ ≥ 1/3</div>
+`},
+
+// ===== 8: ADD CUT 2 =====
+{title:"Add Cut 2",html:`
+<div class="chapter-num">Step 8</div>
+<h2>Add Cut 2 to the Tableau</h2>
+
+<div class="card amber">
+<div class="card-title">Important — Another Surplus Variable</div>
+<div class="explain" style="margin:0">Just like Cut 1 needed its own surplus variable (S₄), Cut 2 gets its own too: <strong>S₅</strong>. Every new cut you add gets a brand new surplus variable. The tableau keeps growing — one extra row and one extra column per cut.</div>
+</div>
+
+<div class="card">
+<div class="card-title">Convert the Cut</div>
+<div class="work-line">Start: (1/3)s₂ + (1/3)S₄ ≥ 1/3</div>
+<div class="work-line">Subtract surplus <strong>S₅</strong>: (1/3)s₂ + (1/3)S₄ − <strong>S₅</strong> = 1/3</div>
+<div class="work-line purple">× (−1): −(1/3)s₂ − (1/3)S₄ + <strong>S₅</strong> = −1/3</div>
+<div class="explain" style="margin-top:6px">S₅ gets the +1 (basic), RHS goes negative (triggers dual simplex). Same pattern as before.</div>
+</div>
+
+<div class="card">
+<div class="card-title">Tableau with Cut 2 Added — Notice S₅ Column</div>
+<table class="tab">
+<tr><th></th><th>x₁</th><th>x₂</th><th>s₁</th><th>s₂</th><th>s₃</th><th>S₄</th><th>S₅</th><th>Z</th><th>RHS</th></tr>
+<tr><td>s₁</td><td>0</td><td>0</td><td>1</td><td>−2/3</td><td>0</td><td>7/3</td><td>0</td><td>0</td><td>16/3</td></tr>
+<tr><td>x₂</td><td>0</td><td>1</td><td>0</td><td>1/3</td><td>0</td><td>−2/3</td><td>0</td><td>0</td><td>4/3</td></tr>
+<tr><td>x₁</td><td>1</td><td>0</td><td>0</td><td>0</td><td>0</td><td>1</td><td>0</td><td>0</td><td>4</td></tr>
+<tr><td>s₃</td><td>0</td><td>0</td><td>0</td><td>1/3</td><td>1</td><td>−5/3</td><td>0</td><td>0</td><td>1/3</td></tr>
+<tr class="row-hlp"><td>S₅</td><td>0</td><td>0</td><td>0</td><td class="hlp">−1/3</td><td>0</td><td class="hlp">−1/3</td><td class="hlp">1</td><td>0</td><td class="hlr">−1/3</td></tr>
+<tr><td>Z</td><td>0</td><td>0</td><td>0</td><td>1/3</td><td>0</td><td>10/3</td><td>0</td><td>1</td><td>52/3</td></tr>
+</table>
+</div>
+
+<div class="explain">RHS = −1/3 (negative). Z row all ≥ 0. Dual simplex again. <strong>S₅ leaves</strong>.</div>
+`},
+
+// ===== 9: DUAL SIMPLEX 2 =====
+{title:"Dual Simplex 2",html:`
+<div class="chapter-num">Step 9</div>
+<h2>Dual Simplex — Round 2</h2>
+
+<div class="card">
+<div class="card-title">S₅ Leaves — Who Enters?</div>
+<div class="work-line">Negatives in S₅ row: s₂ = −1/3, S₄ = −1/3</div>
+<div class="work-line" style="margin-top:4px">Ratios: s₂ → (1/3)÷(1/3) = 1, S₄ → (10/3)÷(1/3) = 10</div>
+<div class="work-line result">s₂ enters (smallest). Pivot: −1/3</div>
+</div>
+`},
+
+// ===== 10: DONE =====
+{title:"Done! ★",html:`
+<div class="chapter-num">Step 10 — The Final Check</div>
+<h2>Are We Done?</h2>
+<div class="subtitle">After every dual simplex pivot, we always come back to the same question: <strong>is the solution all integer now?</strong> If yes — we're done. If no — we'd generate another cut. Let's check.</div>
+
+<div class="card green">
+<div class="card-title">Final Tableau</div>
+<table class="tab">
+<tr><th></th><th>x₁</th><th>x₂</th><th>s₁</th><th>s₂</th><th>s₃</th><th>S₄</th><th>S₅</th><th>Z</th><th>RHS</th></tr>
+<tr><td>s₁</td><td>0</td><td>0</td><td>1</td><td>0</td><td>0</td><td>3</td><td>−2</td><td>0</td><td>6</td></tr>
+<tr><td>x₂</td><td>0</td><td>1</td><td>0</td><td>0</td><td>0</td><td>−1</td><td>1</td><td>0</td><td class="hlg">1</td></tr>
+<tr><td>x₁</td><td>1</td><td>0</td><td>0</td><td>0</td><td>0</td><td>1</td><td>0</td><td>0</td><td class="hlg">4</td></tr>
+<tr><td>s₃</td><td>0</td><td>0</td><td>0</td><td>0</td><td>1</td><td>−2</td><td>1</td><td>0</td><td>0</td></tr>
+<tr><td>s₂</td><td>0</td><td>0</td><td>0</td><td>1</td><td>0</td><td>1</td><td>−3</td><td>0</td><td>1</td></tr>
+<tr><td>Z</td><td>0</td><td>0</td><td>0</td><td>0</td><td>0</td><td>3</td><td>1</td><td>1</td><td class="hlg">17</td></tr>
+</table>
+</div>
+
+<div class="card green">
+<div class="card-title">Read the Solution — The Big Moment</div>
+<div class="work-line good">x₁ = 4 ← integer? YES ✓</div>
+<div class="work-line good">x₂ = 1 ← integer? YES ✓</div>
+<div class="explain" style="margin-top:8px"><strong>Both variables are integer!</strong> That means we don't need any more cuts. No more surplus variables, no more dual simplex. The process is complete.</div>
+<div class="work-line good" style="font-size:1.1rem;margin-top:8px">Z = 17 ★ This is the optimal integer solution.</div>
+</div>
+
+<div class="card">
+<div class="card-title">Verify — Plug Back Into Original Constraints</div>
+<div class="work-line">−(4) + 2(1) = −2 ≤ 4 ✓</div>
+<div class="work-line">2(4) + 3(1) = 11 ≤ 12 ✓</div>
+<div class="work-line">(4) − (1) = 3 ≤ 3 ✓</div>
+<div class="explain" style="margin-top:6px">All three constraints are satisfied. The solution is feasible and optimal.</div>
+</div>
+
+<div class="card blue">
+<div class="card-title">The Journey</div>
+<div class="explain" style="margin:0">
+<strong>LP relaxation:</strong> x₁ = 4.2, x₂ = 1.2, Z = 18 (fractional)<br>
+<strong>After Cut 1:</strong> x₁ = 4, x₂ = 1.33, Z = 17.33 (x₁ fixed!)<br>
+<strong>After Cut 2:</strong> x₁ = 4, x₂ = 1, Z = 17 (both integer!)<br><br>
+Two cuts was all it took. Each cut tightened the belt a little more until the solution snapped into integers. We lost 1 in profit (18 → 17) — that's the cost of requiring whole numbers.
+</div>
+</div>
+
+<div class="outcome done">★ Optimal integer solution found: x₁ = 4, x₂ = 1, Z = 17. No more fractionals. We're done.</div>
+`},
+
+// ===== 11: SUMMARY =====
+{title:"Summary",html:`
+<div class="chapter-num">Epilogue</div>
+<h2>The Gomory Cuts Recipe</h2>
+
+<div class="card blue">
+<div class="card-title">Steps</div>
+<div class="explain" style="margin:0">
+<strong>1.</strong> Solve LP relaxation.<br>
+<strong>2.</strong> All integer? Done!<br>
+<strong>3.</strong> Pick row with fractional RHS.<br>
+<strong>4.</strong> Non-basic columns + RHS only.<br>
+<strong>5.</strong> fp(r) = r − floor(r).<br>
+<strong>6.</strong> Write: fp(non-basics) ≥ fp(RHS).<br>
+<strong>7.</strong> Subtract surplus, × (−1).<br>
+<strong>8.</strong> Add row, dual simplex.<br>
+<strong>9.</strong> Repeat from latest tableau.
+</div>
+</div>
+
+<div class="card">
+<div class="card-title">Rules</div>
+<div class="explain" style="margin:0">
+• Only <strong>non-basic</strong> columns<br>
+• fp always <strong>positive</strong> (0 to 1)<br>
+• Negatives: fp(−0.4) = 0.6<br>
+• Always <strong>≥</strong>, surplus + <strong>dual simplex</strong><br>
+• Build on <strong>latest</strong> tableau<br>
+• No tree. Straight line.
+</div>
+</div>
+
+<div class="card">
+<div class="card-title">Journey</div>
+<table class="tab">
+<tr><th>Stage</th><th>x₁</th><th>x₂</th><th>Z</th><th></th></tr>
+<tr><td>LP</td><td>4.2</td><td>1.2</td><td>18</td><td class="hla">Frac.</td></tr>
+<tr><td>Cut 1</td><td class="hlg">4</td><td>4/3</td><td>52/3</td><td class="hla">Partial</td></tr>
+<tr><td>Cut 2</td><td class="hlg">4</td><td class="hlg">1</td><td class="hlg">17</td><td class="hlg">★</td></tr>
+</table>
+</div>
+
+<div class="outcome done">Two cuts. Two pivots. One optimal integer solution.</div>
+`}
+];
+
+function render(){
+  const ch=chapters[cur];
+  const tl=buildTimeline(cur);
+  document.getElementById('content').innerHTML=`<div class="chapter active">${ch.html}${tl}</div>`;
+  document.getElementById('stepLabel').textContent=`${cur+1} / ${chapters.length}`;
+  document.getElementById('prevBtn').disabled=cur===0;
+  document.getElementById('nextBtn').disabled=cur===chapters.length-1;
+  document.getElementById('bar').style.width=((cur+1)/chapters.length*100)+'%';
+  let dots='';
+  chapters.forEach((_,i)=>{dots+=`<div class="dot${i===cur?' active':''}" onclick="goTo(${i})"></div>`;});
+  document.getElementById('dots').innerHTML=dots;
+  window.scrollTo({top:0,behavior:'smooth'});
+}
+function go(d){cur=Math.max(0,Math.min(chapters.length-1,cur+d));render();}
+function goTo(i){cur=i;render();}
+document.addEventListener('keydown',e=>{if(e.key==='ArrowRight')go(1);if(e.key==='ArrowLeft')go(-1);});
+render();
+</script>
+</body>
+</html>
