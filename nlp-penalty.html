@@ -1,0 +1,418 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>NLP — Penalty Method</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{background:#fff;color:#1a1a1a;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI','Helvetica Neue',sans-serif;-webkit-font-smoothing:antialiased;line-height:1.5}
+
+.nav{position:sticky;top:0;z-index:50;background:rgba(255,255,255,.92);backdrop-filter:blur(12px);border-bottom:1px solid #E5E7EB;padding:0 24px;display:flex;align-items:center;height:48px;gap:12px}
+.nav a{font-size:.9rem;font-weight:600;text-decoration:none;color:inherit;cursor:pointer}
+.nav a:hover{color:#2563EB}
+.nav .step-dots{display:flex;gap:5px;margin-left:auto;flex-wrap:wrap}
+.nav .dot{width:7px;height:7px;border-radius:50%;background:#E5E7EB;cursor:pointer;transition:all .2s}
+.nav .dot.active{background:#2563EB;transform:scale(1.4)}
+
+.progress{position:sticky;top:48px;z-index:49;height:3px;background:#F3F4F6}
+.progress-fill{height:100%;background:#2563EB;transition:width .4s ease}
+
+.controls{position:sticky;top:51px;z-index:48;background:rgba(255,255,255,.95);backdrop-filter:blur(8px);border-bottom:1px solid #F3F4F6;padding:8px 24px;display:flex;align-items:center;gap:10px;max-width:840px;margin:0 auto}
+.btn{padding:6px 16px;border-radius:8px;border:1px solid #E5E7EB;background:#fff;font-size:.8rem;font-weight:500;cursor:pointer;transition:all .15s;color:#374151}
+.btn:hover{background:#F9FAFB}
+.btn.primary{background:#2563EB;color:#fff;border-color:#2563EB}
+.btn.primary:hover{background:#1D4ED8}
+.btn:disabled{opacity:.3;cursor:default}
+.step-label{font-size:.78rem;color:#6B7280;margin-left:auto}
+
+.content{max-width:840px;margin:0 auto;padding:32px 24px 80px}
+.chapter{display:none;animation:fadeIn .3s ease}
+.chapter.active{display:block}
+@keyframes fadeIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+
+.chapter-num{font-size:.7rem;font-weight:600;text-transform:uppercase;letter-spacing:.08em;color:#2563EB;margin-bottom:4px}
+.chapter h2{font-size:1.25rem;font-weight:600;margin-bottom:4px}
+.subtitle{font-size:.88rem;color:#6B7280;margin-bottom:20px;line-height:1.6}
+
+.card{background:#F9FAFB;border:1px solid #E5E7EB;border-radius:12px;padding:18px 20px;margin:14px 0}
+.card.amber{border-left:4px solid #D97706}
+.card.green{border-left:4px solid #059669}
+.card.red{border-left:4px solid #DC2626}
+.card.blue{border-left:4px solid #2563EB}
+.card.purple{border-left:4px solid #7C3AED}
+.card-title{font-size:.7rem;font-weight:600;text-transform:uppercase;letter-spacing:.06em;color:#6B7280;margin-bottom:8px}
+
+.work-line{font-family:'SF Mono',Menlo,Consolas,monospace;font-size:.84rem;padding:3px 0;line-height:1.7;color:#374151}
+.work-line.result{color:#2563EB;font-weight:600}
+.work-line.good{color:#059669;font-weight:600}
+.work-line.bad{color:#DC2626;font-weight:600}
+.work-line.indent{padding-left:20px;color:#6B7280}
+
+.explain{font-size:.86rem;color:#6B7280;line-height:1.6;margin:8px 0}
+.explain strong{color:#1a1a1a;font-weight:600}
+
+.outcome{margin-top:16px;padding:12px 16px;border-radius:10px;font-size:.86rem;font-weight:500}
+.outcome.next{background:rgba(37,99,235,.05);border:1px solid rgba(37,99,235,.12);color:#2563EB}
+.outcome.done{background:rgba(5,150,105,.05);border:1px solid rgba(5,150,105,.12);color:#059669}
+
+.section-label{font-size:.72rem;font-weight:600;text-transform:uppercase;letter-spacing:.06em;color:#2563EB;margin:20px 0 8px;padding-top:16px;border-top:1px solid #F3F4F6}
+
+table.tab{width:100%;border-collapse:collapse;font-size:.82rem;margin:8px 0}
+table.tab th{text-align:center;padding:7px 8px;color:#6B7280;font-weight:500;border-bottom:2px solid #E5E7EB;font-size:.74rem}
+table.tab td{text-align:center;padding:7px 8px;border-bottom:1px solid #F3F4F6;font-family:'SF Mono',Menlo,Consolas,monospace;font-size:.82rem}
+table.tab td.hlg{background:rgba(5,150,105,.06);color:#059669;font-weight:600}
+table.tab td.hlr{background:rgba(220,38,38,.06);color:#DC2626;font-weight:600}
+table.tab td.hl{background:rgba(37,99,235,.06);color:#2563EB;font-weight:600}
+table.tab td.hla{background:rgba(217,119,6,.06);color:#D97706;font-weight:600}
+</style>
+</head>
+<body>
+
+<div class="nav">
+  <a href="index.html">← Penalty Method</a>
+  <div class="step-dots" id="dots"></div>
+</div>
+<div class="progress"><div class="progress-fill" id="bar"></div></div>
+<div class="controls">
+  <button class="btn" id="prevBtn" onclick="go(-1)">← Back</button>
+  <button class="btn primary" id="nextBtn" onclick="go(1)">Next →</button>
+  <div class="step-label" id="stepLabel"></div>
+</div>
+<div class="content" id="content"></div>
+
+<script>
+let cur=0;
+
+const chapters=[
+
+// ===== 0: PROLOGUE =====
+{title:"What is the Penalty Method?",html:`
+<div class="chapter-num">Prologue</div>
+<h2>Penalty Method — Handle Equality Constraints</h2>
+<div class="subtitle">You have an NLP with an = constraint. Instead of dealing with it directly, you remove it and punish yourself for breaking it.</div>
+
+<div class="card blue">
+<div class="card-title">When To Use It</div>
+<div class="explain" style="margin:0">
+When your NLP has an <strong>equality constraint</strong> (=).<br><br>
+Derivative = 0 → no constraints.<br>
+<strong>Penalty → equality constraints (=).</strong><br>
+Barrier → inequality constraints (≤, ≥).<br>
+KKT → any combination.
+</div>
+</div>
+
+<div class="card blue">
+<div class="card-title">The Recipe</div>
+<div class="explain" style="margin:0">
+<strong>1.</strong> Take the constraint. Move everything to one side so it equals zero.<br>
+<strong>2.</strong> Square it.<br>
+<strong>3.</strong> Multiply by M (a big positive number — the "anger level").<br>
+<strong>4.</strong> Add it to the objective function.<br>
+<strong>5.</strong> Now you have no constraint — just derivative = 0.<br><br>
+The squaring makes the penalty always positive and zero only when the constraint is perfectly satisfied.
+</div>
+</div>
+
+<div class="card blue">
+<div class="card-title">Why Does M Matter?</div>
+<div class="explain" style="margin:0">
+M controls how much you care about the constraint:<br><br>
+<strong>Small M</strong> (like 1) = "meh, I don't care much" → answer far from true optimal<br>
+<strong>Big M</strong> (like 100) = "I really care" → answer very close to true optimal<br>
+<strong>M → ∞</strong> = "I care infinitely" → answer converges to the exact true optimal<br><br>
+The exam will ask you to try different M values and watch the answer get closer.
+</div>
+</div>
+
+<div class="outcome next">→ Let's solve the exercise from the workshop.</div>
+`},
+
+// ===== 1: EXERCISE SETUP =====
+{title:"Exercise — Setup",html:`
+<div class="chapter-num">Exercise — From Week 10 Workshop</div>
+<h2>Penalty Method Exercise</h2>
+
+<div class="card blue">
+<div class="card-title">The Original NLP</div>
+<div class="work-line result">min x²</div>
+<div class="work-line">s.t. x = 3</div>
+<div class="explain" style="margin-top:8px">The true answer is obviously x = 3 — it's the only point that satisfies the constraint. Let's see how penalty gets there.</div>
+</div>
+
+<div class="section-label" style="border-top:none">Step 1 — Build the Penalty Version</div>
+
+<div class="card">
+<div class="card-title">Remove the constraint, add punishment</div>
+<div class="explain" style="margin:0">Take the constraint and turn it into a penalty term:</div>
+<div class="work-line" style="margin-top:8px">Constraint: x = 3</div>
+<div class="work-line">Rewrite: x − 3 = 0</div>
+<div class="work-line">Square it: (x − 3)²</div>
+<div class="work-line">Multiply by M: M(x − 3)²</div>
+<div class="work-line">Add to objective: x² + M(x − 3)²</div>
+</div>
+
+<div class="card purple">
+<div class="card-title">The Penalty Version</div>
+<div class="work-line result">min x² + M(x − 3)²</div>
+<div class="work-line">No constraints anymore!</div>
+<div class="explain" style="margin-top:8px">
+If x = 3: penalty = M × 0² = <strong>0</strong> (no punishment)<br>
+If x = 2: penalty = M × (−1)² = <strong>M</strong> (punished)<br>
+If x = 5: penalty = M × (2)² = <strong>4M</strong> (punished even more)
+</div>
+</div>
+
+<div class="outcome next">→ Now solve it — derivative = 0.</div>
+`},
+
+// ===== 2: PART (i) =====
+{title:"Part (i) — Solve for x*(M)",html:`
+<div class="chapter-num">Part (i) — Find x*(M)</div>
+<h2>By differentiating and setting to zero, find x* as a function of M.</h2>
+
+<div class="section-label" style="border-top:none;margin-top:0;padding-top:0">Step 2 — Expand</div>
+
+<div class="card">
+<div class="work-line">x² + M(x − 3)²</div>
+<div class="work-line" style="margin-top:4px">Expand (x − 3)² = x² − 6x + 9:</div>
+<div class="work-line" style="margin-top:4px">= x² + M(x² − 6x + 9)</div>
+<div class="work-line">= x² + Mx² − 6Mx + 9M</div>
+<div class="work-line result">= (1 + M)x² − 6Mx + 9M</div>
+</div>
+
+<div class="section-label">Step 3 — Differentiate</div>
+
+<div class="card">
+<div class="explain" style="margin:0">Differentiate each term with respect to x:</div>
+<div class="work-line" style="margin-top:6px">(1 + M)x² → 2(1 + M)x</div>
+<div class="work-line">−6Mx → −6M</div>
+<div class="work-line">9M → 0 (it's a constant, no x)</div>
+<div class="work-line result" style="margin-top:6px">f'(x) = 2(1 + M)x − 6M</div>
+</div>
+
+<div class="section-label">Step 4 — Set to Zero and Solve</div>
+
+<div class="card">
+<div class="work-line">2(1 + M)x − 6M = 0</div>
+<div class="work-line" style="margin-top:4px">Move −6M to the other side:</div>
+<div class="work-line">2(1 + M)x = 6M</div>
+<div class="work-line" style="margin-top:4px">Divide both sides by 2(1 + M):</div>
+<div class="work-line">x = 6M / 2(1 + M)</div>
+<div class="work-line" style="margin-top:4px">Simplify 6/2 = 3:</div>
+<div class="work-line result" style="font-size:.95rem">x*(M) = 3M / (1 + M)</div>
+</div>
+
+<div class="card green">
+<div class="card-title">What Does This Mean?</div>
+<div class="explain" style="margin:0">
+The answer <strong>depends on M</strong>. It's not a single number — it's a formula. As M gets bigger, the answer changes.<br><br>
+Let's plug in some values to see what happens.
+</div>
+</div>
+
+<div class="outcome next">→ Part (ii) — try specific values of M.</div>
+`},
+
+// ===== 3: PART (ii) =====
+{title:"Part (ii) — Plug in M values",html:`
+<div class="chapter-num">Part (ii)</div>
+<h2>Compute x*(M) for M = 1, 10, 100</h2>
+<div class="subtitle">The true optimal is x = 3. Let's see how close the penalty method gets for different values of M.</div>
+
+<div class="card">
+<div class="card-title">M = 1 (Low punishment)</div>
+<div class="work-line">x*(1) = 3(1) / (1 + 1) = 3/2</div>
+<div class="work-line result">x* = 1.5</div>
+<div class="explain">Way off from 3. M = 1 doesn't punish enough — the x² term pulls x toward 0 and the penalty isn't strong enough to resist.</div>
+</div>
+
+<div class="card">
+<div class="card-title">M = 10 (Medium punishment)</div>
+<div class="work-line">x*(10) = 3(10) / (1 + 10) = 30/11</div>
+<div class="work-line result">x* = 2.727</div>
+<div class="explain">Getting closer. The penalty is fighting harder to push x toward 3.</div>
+</div>
+
+<div class="card">
+<div class="card-title">M = 100 (High punishment)</div>
+<div class="work-line">x*(100) = 3(100) / (1 + 100) = 300/101</div>
+<div class="work-line result">x* = 2.970</div>
+<div class="explain">Almost there! Only 0.03 away from 3.</div>
+</div>
+
+<div class="card green">
+<div class="card-title">The Pattern</div>
+<table class="tab">
+<tr><th>M</th><th>x*(M)</th><th>Distance from true x = 3</th></tr>
+<tr><td>1</td><td class="hlr">1.500</td><td>1.500</td></tr>
+<tr><td>10</td><td class="hla">2.727</td><td>0.273</td></tr>
+<tr><td>100</td><td class="hlg">2.970</td><td>0.030</td></tr>
+<tr><td>∞</td><td class="hlg">3.000</td><td>0.000</td></tr>
+</table>
+<div class="explain" style="margin-top:8px">
+As M increases, x* gets closer and closer to 3. The penalty method <strong>never reaches exactly 3</strong> for any finite M — but it gets as close as you want.<br><br>
+At M → ∞: 3M/(1+M) → 3M/M = 3. Perfect.
+</div>
+</div>
+
+<div class="outcome next">→ Part (iii) — find the exact M we need.</div>
+`},
+
+// ===== 4: PART (iii) =====
+{title:"Part (iii) — Find Minimum M",html:`
+<div class="chapter-num">Part (iii)</div>
+<h2>Find the smallest integer M such that x*(M) is within 1% of x = 3</h2>
+
+<div class="section-label" style="border-top:none;margin-top:0;padding-top:0">What Does "Within 1%" Mean?</div>
+
+<div class="card">
+<div class="explain" style="margin:0">
+1% of 3 = 0.03. So we need x* to be at least 3 − 0.03 = <strong>2.97</strong>.<br><br>
+In other words: 3M/(1 + M) ≥ 2.97
+</div>
+</div>
+
+<div class="section-label">Solve the Inequality</div>
+
+<div class="card">
+<div class="work-line">3M / (1 + M) ≥ 2.97</div>
+<div class="work-line" style="margin-top:4px">Multiply both sides by (1 + M):</div>
+<div class="work-line">3M ≥ 2.97(1 + M)</div>
+<div class="work-line" style="margin-top:4px">Expand the right side:</div>
+<div class="work-line">3M ≥ 2.97 + 2.97M</div>
+<div class="work-line" style="margin-top:4px">Move 2.97M to the left:</div>
+<div class="work-line">3M − 2.97M ≥ 2.97</div>
+<div class="work-line">0.03M ≥ 2.97</div>
+<div class="work-line" style="margin-top:4px">Divide by 0.03:</div>
+<div class="work-line result">M ≥ 99</div>
+</div>
+
+<div class="card green">
+<div class="card-title">Verify</div>
+<div class="work-line">x*(99) = 3(99) / (1 + 99) = 297/100 = <strong>2.97</strong></div>
+<div class="work-line good">2.97 is exactly 1% away from 3. ✓</div>
+<div class="work-line" style="margin-top:6px">x*(98) = 3(98) / (1 + 98) = 294/99 = <strong>2.9697</strong></div>
+<div class="work-line bad">2.9697 < 2.97 — too far. ✗</div>
+<div class="work-line good" style="margin-top:6px">Smallest integer M = 99 ✓</div>
+</div>
+
+<div class="outcome next">→ Let's understand why the penalty method works this way.</div>
+`},
+
+// ===== 5: WHY IT WORKS =====
+{title:"Why Penalty Works",html:`
+<div class="chapter-num">Understanding</div>
+<h2>What's Actually Happening?</h2>
+<div class="subtitle">The penalty method is a tug-of-war between the original objective and the constraint.</div>
+
+<div class="card blue">
+<div class="card-title">Two Forces Pulling in Opposite Directions</div>
+<div class="explain" style="margin:0">
+Our penalty problem is: <strong>min x² + M(x − 3)²</strong><br><br>
+<strong>Force 1 — The original objective x²:</strong><br>
+This wants x = 0 (that's where x² is smallest).<br><br>
+<strong>Force 2 — The penalty M(x − 3)²:</strong><br>
+This wants x = 3 (that's where (x − 3)² is zero).<br><br>
+The answer is always a compromise between these two forces. M controls who wins:<br><br>
+• Small M → Force 1 wins → x closer to 0<br>
+• Big M → Force 2 wins → x closer to 3<br>
+• Infinite M → Force 2 dominates → x = 3 exactly
+</div>
+</div>
+
+<div class="card amber">
+<div class="card-title">The Trade-off</div>
+<div class="explain" style="margin:0">
+The penalty method <strong>never gives the exact answer</strong> for finite M. It's always slightly off. The bigger M is, the closer you get — but you never reach perfection.<br><br>
+That's why the exam asks you to find the M that gets "close enough" (within 1%).
+</div>
+</div>
+
+<div class="card">
+<div class="card-title">Key Difference from Barrier Method</div>
+<div class="explain" style="margin:0">
+Penalty method solutions can be <strong>infeasible</strong> — they don't necessarily satisfy the original constraint. Our x = 2.97 doesn't equal 3.<br><br>
+The barrier method (next topic) always gives <strong>feasible</strong> solutions. That's a key comparison point the exam might ask about.
+</div>
+</div>
+
+<div class="outcome next">→ Summary.</div>
+`},
+
+// ===== 6: SUMMARY =====
+{title:"Summary",html:`
+<div class="chapter-num">Epilogue</div>
+<h2>The Penalty Method Recipe</h2>
+
+<div class="card blue">
+<div class="card-title">The Steps</div>
+<div class="explain" style="margin:0">
+<strong>1.</strong> Take the = constraint. Move everything to one side: g(x) = 0.<br>
+<strong>2.</strong> Square it: [g(x)]²<br>
+<strong>3.</strong> Multiply by M: M[g(x)]²<br>
+<strong>4.</strong> Add to objective: min f(x) + M[g(x)]²<br>
+<strong>5.</strong> Expand, differentiate, set to zero. Solve for x in terms of M.<br>
+<strong>6.</strong> Plug in different M values (1, 10, 100, ...) and watch x approach the true answer.<br>
+<strong>7.</strong> If asked: find the smallest M that gets within a certain % of the true answer.
+</div>
+</div>
+
+<div class="card">
+<div class="card-title">Key Facts</div>
+<div class="explain" style="margin:0">
+• Penalty method is for <strong>equality constraints (=)</strong> only<br>
+• Bigger M → closer to the true answer<br>
+• The answer is <strong>never exact</strong> for finite M — always slightly off<br>
+• Solutions can be <strong>infeasible</strong> (don't satisfy the original constraint)<br>
+• After removing the constraint, it becomes derivative = 0 — same method as before
+</div>
+</div>
+
+<div class="card">
+<div class="card-title">The Exercise We Solved</div>
+<table class="tab">
+<tr><th>Part</th><th>Question</th><th>Answer</th></tr>
+<tr><td>(i)</td><td>Find x*(M)</td><td class="hl">3M / (1 + M)</td></tr>
+<tr><td>(ii)</td><td>M = 1</td><td class="hlr">x* = 1.5</td></tr>
+<tr><td>(ii)</td><td>M = 10</td><td class="hla">x* = 2.727</td></tr>
+<tr><td>(ii)</td><td>M = 100</td><td class="hlg">x* = 2.970</td></tr>
+<tr><td>(iii)</td><td>Within 1%</td><td class="hlg">M = 99</td></tr>
+</table>
+</div>
+
+<div class="card">
+<div class="card-title">Where This Fits</div>
+<table class="tab">
+<tr><th>Method</th><th>Constraint Type</th></tr>
+<tr><td>Derivative = 0</td><td>None (unconstrained)</td></tr>
+<tr><td class="hl">Penalty</td><td class="hl">Equality (=)</td></tr>
+<tr><td>Barrier</td><td>Inequality (≤, ≥)</td></tr>
+<tr><td>KKT</td><td>Any combination</td></tr>
+</table>
+</div>
+
+<div class="outcome done">Penalty done. Next up: Barrier Method — same idea but for ≤ and ≥ constraints, using log instead of squaring.</div>
+`}
+];
+
+function render(){
+  const ch=chapters[cur];
+  document.getElementById('content').innerHTML=`<div class="chapter active">${ch.html}</div>`;
+  document.getElementById('stepLabel').textContent=`${cur+1} / ${chapters.length}`;
+  document.getElementById('prevBtn').disabled=cur===0;
+  document.getElementById('nextBtn').disabled=cur===chapters.length-1;
+  document.getElementById('bar').style.width=((cur+1)/chapters.length*100)+'%';
+  let dots='';
+  chapters.forEach((_,i)=>{dots+=`<div class="dot${i===cur?' active':''}" onclick="goTo(${i})"></div>`;});
+  document.getElementById('dots').innerHTML=dots;
+  window.scrollTo({top:0,behavior:'smooth'});
+}
+function go(d){cur=Math.max(0,Math.min(chapters.length-1,cur+d));render();}
+function goTo(i){cur=i;render();}
+document.addEventListener('keydown',e=>{if(e.key==='ArrowRight')go(1);if(e.key==='ArrowLeft')go(-1);});
+render();
+</script>
+</body>
+</html>

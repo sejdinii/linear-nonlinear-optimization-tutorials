@@ -1,0 +1,499 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>NLP — Derivative = 0 (Harris Formula)</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{background:#fff;color:#1a1a1a;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI','Helvetica Neue',sans-serif;-webkit-font-smoothing:antialiased;line-height:1.5}
+
+.nav{position:sticky;top:0;z-index:50;background:rgba(255,255,255,.92);backdrop-filter:blur(12px);border-bottom:1px solid #E5E7EB;padding:0 24px;display:flex;align-items:center;height:48px;gap:12px}
+.nav a{font-size:.9rem;font-weight:600;text-decoration:none;color:inherit;cursor:pointer}
+.nav a:hover{color:#2563EB}
+.nav .step-dots{display:flex;gap:5px;margin-left:auto;flex-wrap:wrap}
+.nav .dot{width:7px;height:7px;border-radius:50%;background:#E5E7EB;cursor:pointer;transition:all .2s}
+.nav .dot.active{background:#2563EB;transform:scale(1.4)}
+
+.progress{position:sticky;top:48px;z-index:49;height:3px;background:#F3F4F6}
+.progress-fill{height:100%;background:#2563EB;transition:width .4s ease}
+
+.controls{position:sticky;top:51px;z-index:48;background:rgba(255,255,255,.95);backdrop-filter:blur(8px);border-bottom:1px solid #F3F4F6;padding:8px 24px;display:flex;align-items:center;gap:10px;max-width:840px;margin:0 auto}
+.btn{padding:6px 16px;border-radius:8px;border:1px solid #E5E7EB;background:#fff;font-size:.8rem;font-weight:500;cursor:pointer;transition:all .15s;color:#374151}
+.btn:hover{background:#F9FAFB}
+.btn.primary{background:#2563EB;color:#fff;border-color:#2563EB}
+.btn.primary:hover{background:#1D4ED8}
+.btn:disabled{opacity:.3;cursor:default}
+.step-label{font-size:.78rem;color:#6B7280;margin-left:auto}
+
+.content{max-width:840px;margin:0 auto;padding:32px 24px 80px}
+.chapter{display:none;animation:fadeIn .3s ease}
+.chapter.active{display:block}
+@keyframes fadeIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+
+.chapter-num{font-size:.7rem;font-weight:600;text-transform:uppercase;letter-spacing:.08em;color:#2563EB;margin-bottom:4px}
+.chapter h2{font-size:1.25rem;font-weight:600;margin-bottom:4px}
+.subtitle{font-size:.88rem;color:#6B7280;margin-bottom:20px;line-height:1.6}
+
+.card{background:#F9FAFB;border:1px solid #E5E7EB;border-radius:12px;padding:18px 20px;margin:14px 0}
+.card.amber{border-left:4px solid #D97706}
+.card.green{border-left:4px solid #059669}
+.card.red{border-left:4px solid #DC2626}
+.card.blue{border-left:4px solid #2563EB}
+.card.purple{border-left:4px solid #7C3AED}
+.card-title{font-size:.7rem;font-weight:600;text-transform:uppercase;letter-spacing:.06em;color:#6B7280;margin-bottom:8px}
+
+.work-line{font-family:'SF Mono',Menlo,Consolas,monospace;font-size:.84rem;padding:3px 0;line-height:1.7;color:#374151}
+.work-line.result{color:#2563EB;font-weight:600}
+.work-line.good{color:#059669;font-weight:600}
+.work-line.bad{color:#DC2626;font-weight:600}
+.work-line.indent{padding-left:20px;color:#6B7280}
+
+.explain{font-size:.86rem;color:#6B7280;line-height:1.6;margin:8px 0}
+.explain strong{color:#1a1a1a;font-weight:600}
+
+.numline{font-family:'SF Mono',Menlo,Consolas,monospace;font-size:.82rem;padding:12px 16px;background:#F9FAFB;border:1px solid #E5E7EB;border-radius:8px;margin:8px 0;white-space:pre;overflow-x:auto;line-height:1.6}
+
+.outcome{margin-top:16px;padding:12px 16px;border-radius:10px;font-size:.86rem;font-weight:500}
+.outcome.next{background:rgba(37,99,235,.05);border:1px solid rgba(37,99,235,.12);color:#2563EB}
+.outcome.done{background:rgba(5,150,105,.05);border:1px solid rgba(5,150,105,.12);color:#059669}
+
+.section-label{font-size:.72rem;font-weight:600;text-transform:uppercase;letter-spacing:.06em;color:#2563EB;margin:20px 0 8px;padding-top:16px;border-top:1px solid #F3F4F6}
+
+table.tab{width:100%;border-collapse:collapse;font-size:.82rem;margin:8px 0}
+table.tab th{text-align:center;padding:7px 8px;color:#6B7280;font-weight:500;border-bottom:2px solid #E5E7EB;font-size:.74rem}
+table.tab td{text-align:center;padding:7px 8px;border-bottom:1px solid #F3F4F6;font-family:'SF Mono',Menlo,Consolas,monospace;font-size:.82rem}
+table.tab td.hlg{background:rgba(5,150,105,.06);color:#059669;font-weight:600}
+table.tab td.hlr{background:rgba(220,38,38,.06);color:#DC2626;font-weight:600}
+table.tab td.hl{background:rgba(37,99,235,.06);color:#2563EB;font-weight:600}
+table.tab td.hla{background:rgba(217,119,6,.06);color:#D97706;font-weight:600}
+</style>
+</head>
+<body>
+
+<div class="nav">
+  <a href="index.html">← Derivative = 0 (Harris)</a>
+  <div class="step-dots" id="dots"></div>
+</div>
+<div class="progress"><div class="progress-fill" id="bar"></div></div>
+<div class="controls">
+  <button class="btn" id="prevBtn" onclick="go(-1)">← Back</button>
+  <button class="btn primary" id="nextBtn" onclick="go(1)">Next →</button>
+  <div class="step-label" id="stepLabel"></div>
+</div>
+<div class="content" id="content"></div>
+
+<script>
+let cur=0;
+
+const chapters=[
+
+// ===== 0: PROLOGUE =====
+{title:"What is this method?",html:`
+<div class="chapter-num">Prologue</div>
+<h2>Derivative = 0 — The Simplest NLP Method</h2>
+<div class="subtitle">Find the minimum or maximum of a function with no constraints. Just calculus.</div>
+
+<div class="card blue">
+<div class="card-title">When To Use It</div>
+<div class="explain" style="margin:0">
+<strong>Unconstrained NLPs</strong> — no constraints, or just x ≥ 0.<br><br>
+Equality constraints (=) → Penalty Method.<br>
+Inequality constraints (≤, ≥) → Barrier Method or KKT.<br><br>
+This method is the foundation — all other methods use "derivative = 0" as a step inside them.
+</div>
+</div>
+
+<div class="card blue">
+<div class="card-title">The Derivative Rules You Need</div>
+<div class="explain" style="margin:0">
+<strong>xⁿ → nxⁿ⁻¹</strong> (power rule)<br>
+<strong>5x² → 10x</strong> (constant multiplier)<br>
+<strong>1/x = x⁻¹ → −1/x²</strong> (rewrite then power rule)<br>
+<strong>x² + 3x → 2x + 3</strong> (differentiate each term separately)<br><br>
+Four rules. That's all you need.
+</div>
+</div>
+
+<div class="card blue">
+<div class="card-title">Harris Formula (Inventory Problems Only)</div>
+<div class="explain" style="margin:0">
+<strong>x = √(2pd/h)</strong><br><br>
+p = order cost, d = annual demand, h = holding cost per unit per year.<br><br>
+This isn't a separate method — it's what you get when you do derivative = 0 on the inventory cost function pd/x + hx/2. Someone pre-solved it in 1913 so you don't have to redo the algebra every time.
+</div>
+</div>
+
+<div class="outcome next">→ Let's learn everything through exercises.</div>
+`},
+
+// ===== 1: EXERCISE 1 — THE FULL STORY =====
+{title:"Exercise 1 — Inventory Control",html:`
+<div class="chapter-num">Exercise 1 — Convex Function (One Minimum)</div>
+<h2>Inventory Control — Week 9 Workshop</h2>
+<div class="subtitle">A company uses 10,000 units of a raw material each year. Purchasing one unit costs 5€. Placing an order costs 10€. Annual holding cost is 10% of the average stock value. They order x units at a time.</div>
+
+<div class="section-label" style="border-top:none;margin-top:0;padding-top:0">The NLP</div>
+
+<div class="card">
+<div class="card-title">Understanding the Costs</div>
+<div class="explain" style="margin:0">
+<strong>Ordering cost:</strong> They need 10,000 units, order x at a time → 10000/x orders per year. Each costs 10€.<br>
+Annual ordering cost = 10 × 10000/x = <strong>100000/x</strong><br><br>
+<strong>Holding cost:</strong> Average stock = x/2. Holding cost per unit = 10% of 5€ = 0.5€.<br>
+Annual holding cost = 0.5 × x/2 = <strong>0.25x</strong>
+</div>
+</div>
+
+<div class="card blue">
+<div class="work-line result">min f(x) = 100000/x + 0.25x</div>
+<div class="work-line">s.t. x ≥ 0</div>
+<div class="explain" style="margin-top:6px">100000/x = dividing by a variable → nonlinear. That's what makes this an NLP.</div>
+</div>
+
+<div class="section-label">Step 1 — Take the Derivative</div>
+
+<div class="card">
+<div class="explain" style="margin:0">Rewrite 100000/x as 100000 × x⁻¹ so we can use the power rule.</div>
+<div class="work-line" style="margin-top:8px">f(x) = 100000 × x⁻¹ + 0.25x</div>
+<div class="work-line" style="margin-top:6px">Differentiate each term:</div>
+<div class="work-line indent">100000 × x⁻¹ → 100000 × (−1) × x⁻² = −100000/x²</div>
+<div class="work-line indent">0.25x → 0.25</div>
+<div class="work-line result" style="margin-top:6px">f'(x) = −100000/x² + 0.25</div>
+</div>
+
+<div class="section-label">Step 2 — Set to Zero and Solve</div>
+
+<div class="card">
+<div class="work-line">−100000/x² + 0.25 = 0</div>
+<div class="work-line">0.25 = 100000/x²</div>
+<div class="work-line">0.25x² = 100000</div>
+<div class="work-line">x² = 400000</div>
+<div class="work-line result">x = √400000 = 632.46</div>
+<div class="explain" style="margin-top:8px">We got ONE solution. f'(x) = 0 has only one answer. This means there's only one flat point on the curve.</div>
+</div>
+
+<div class="card green">
+<div class="card-title">Harris Formula Shortcut</div>
+<div class="work-line">x = √(2pd/h) = √(2 × 10 × 10000 / 0.5) = √400000 = <strong>632.46</strong> ✓</div>
+<div class="explain" style="margin-top:4px">Same answer. The formula is just Steps 1-2 pre-solved for this type of problem.</div>
+</div>
+
+<div class="section-label">Step 3 — Is it a Minimum or Maximum?</div>
+
+<div class="card">
+<div class="card-title">Test Both Sides of x = 632.46</div>
+<div class="explain" style="margin:0">Pick a number smaller and a number bigger than 632.46. Plug each into <strong>f'(x)</strong> and check the sign. The sign tells you which direction the curve is going:</div>
+
+<div class="work-line" style="margin-top:10px">Try x = 400 (left of 632.46):</div>
+<div class="work-line indent">f'(400) = −100000/160000 + 0.25 = −0.625 + 0.25 = <strong>−0.375</strong></div>
+<div class="work-line bad">Negative → function going DOWN ↘</div>
+
+<div class="work-line" style="margin-top:10px">Try x = 900 (right of 632.46):</div>
+<div class="work-line indent">f'(900) = −100000/810000 + 0.25 = −0.123 + 0.25 = <strong>+0.127</strong></div>
+<div class="work-line good">Positive → function going UP ↗</div>
+
+<div class="numline">LEFT of x:  f' negative → going DOWN  ↘
+AT x:       f' = 0     → flat
+RIGHT of x: f' positive → going UP   ↗
+
+  ↘        ↗
+    ↘    ↗
+      ╰──╯  ← MINIMUM (valley shape)</div>
+
+<div class="work-line good">Down then up = valley = MINIMUM ✓</div>
+</div>
+
+<div class="section-label">Step 4 — Is it the Global Minimum?</div>
+
+<div class="card">
+<div class="card-title">Check: Can there be a deeper valley somewhere else?</div>
+<div class="explain" style="margin:0">We found only ONE flat point (one solution from f'(x) = 0). And the function goes to infinity on both edges:</div>
+<div class="work-line" style="margin-top:8px">x → 0: f(x) = 100000/x → ∞ (explodes)</div>
+<div class="work-line">x → ∞: f(x) = 0.25x → ∞ (explodes)</div>
+<div class="explain" style="margin-top:8px">Both sides go up to infinity. There's only one valley between them — the one we found. Nowhere else for another valley to hide.</div>
+<div class="work-line good" style="margin-top:6px">ONE flat point + both edges → ∞ = GLOBAL minimum ✓</div>
+<div class="explain" style="margin-top:8px">This is a <strong>convex</strong> function — one big bowl. With convex functions, every local minimum is automatically global.</div>
+</div>
+
+<div class="outcome next">→ Now compute the costs and do the constraint twist.</div>
+`},
+
+// ===== 2: COSTS + CONSTRAINT =====
+{title:"Exercise 1 — Costs & Constraint",html:`
+<div class="chapter-num">Exercise 1 — Continued</div>
+<h2>Compute Costs & Handle the Constraint</h2>
+
+<div class="section-label" style="border-top:none;margin-top:0;padding-top:0">Step 5 — Costs at x = 632.46</div>
+
+<div class="card">
+<div class="work-line">Ordering cost: 100000 / 632.46 = <strong>158.12</strong></div>
+<div class="work-line">Holding cost: 0.25 × 632.46 = <strong>158.12</strong></div>
+<div class="work-line good" style="margin-top:6px">They're equal! ✓</div>
+</div>
+
+<div class="card green">
+<div class="card-title">Why Are They Equal? (Harris Sanity Check)</div>
+<div class="explain" style="margin:0">
+With Harris formula, ordering cost and holding cost are <strong>always approximately equal</strong> at the optimum. It's a seesaw:<br><br>
+• Order a lot at once → few orders (cheap) but high stock sitting around (expensive)<br>
+• Order a little at a time → many orders (expensive) but low stock (cheap)<br><br>
+The optimal point is where the two costs meet in the middle. If they're NOT roughly equal on the exam, you made an arithmetic mistake.
+</div>
+</div>
+
+<div class="card">
+<div class="card-title">Total Annual Cost</div>
+<div class="work-line">158.12 + 158.12 = <strong>316.24</strong></div>
+</div>
+
+<div class="section-label">Step 6 — The Constraint Twist</div>
+
+<div class="card amber">
+<div class="card-title">The workshop adds: supplier delivers in multiples of 100 only</div>
+<div class="explain" style="margin:0">
+Our optimal was 632.46 but we can only order 100, 200, 300, 400, 500, 600, 700, ...<br><br>
+The nearest multiples are <strong>600</strong> and <strong>700</strong>. We try both and pick the cheaper one.<br><br>
+Why only these two? Because our optimal sits between them. The function is a bowl — as you move away from the optimal, costs go up. So the best constrained answer must be one of the two neighbors.
+</div>
+</div>
+
+<div class="card">
+<div class="work-line">Try x = 600:</div>
+<div class="work-line indent">f(600) = 100000/600 + 0.25 × 600 = 166.67 + 150.00 = <strong>316.67</strong></div>
+<div class="work-line" style="margin-top:8px">Try x = 700:</div>
+<div class="work-line indent">f(700) = 100000/700 + 0.25 × 700 = 142.86 + 175.00 = <strong>317.86</strong></div>
+<div class="work-line good" style="margin-top:8px">316.67 < 317.86 → x = 600 wins.</div>
+<div class="explain" style="margin-top:6px">Only 43 cents more than the unconstrained optimum. The constraint barely mattered.</div>
+</div>
+
+<div class="outcome done">★ Exercise 1 complete. x = 632.46 (or 600 constrained). Global minimum. Convex function — one bowl, one answer.</div>
+`},
+
+// ===== 3: EXERCISE 2 SETUP =====
+{title:"Exercise 2 — Neither Convex Nor Concave",html:`
+<div class="chapter-num">Exercise 2 — Both Min and Max</div>
+<h2>What Happens When the Function Has Hills AND Valleys?</h2>
+<div class="subtitle">Not every function is a clean bowl. Some have multiple bumps. Here's how to handle it.</div>
+
+<div class="card blue">
+<div class="card-title">The Problem</div>
+<div class="work-line result">Find the minimum and maximum of f(x) = x³ − 12x on the interval [−4, 4]</div>
+<div class="explain" style="margin-top:8px">
+This is a cubic (degree 3). It curves up AND down — like a roller coaster. It's <strong>neither convex nor concave</strong>. It can have both a minimum and a maximum.
+</div>
+</div>
+
+<div class="card amber">
+<div class="card-title">Why Is This Different from Exercise 1?</div>
+<div class="explain" style="margin:0">
+Exercise 1 was a bowl (convex). One flat point. Automatically global.<br><br>
+This function might have <strong>multiple flat points</strong>. Some are valleys, some are hills. We have to find ALL of them, check each one, and compare.
+</div>
+</div>
+
+<div class="section-label" style="border-top:none">Step 1 — Derivative</div>
+
+<div class="card">
+<div class="work-line">f(x) = x³ − 12x</div>
+<div class="work-line">f'(x) = 3x² − 12</div>
+</div>
+
+<div class="section-label">Step 2 — Set to Zero</div>
+
+<div class="card">
+<div class="work-line">3x² − 12 = 0</div>
+<div class="work-line">3x² = 12</div>
+<div class="work-line">x² = 4</div>
+<div class="work-line result">x = −2 and x = +2</div>
+<div class="explain" style="margin-top:8px"><strong>Two solutions!</strong> Two flat points on the curve. One might be a min, one might be a max. We need to check both.</div>
+</div>
+
+<div class="outcome next">→ Let's check each one and find the global min and max.</div>
+`},
+
+// ===== 4: SOLVE EXERCISE 2 =====
+{title:"Exercise 2 — Solving",html:`
+<div class="chapter-num">Exercise 2 — Checking Each Point</div>
+<h2>Which is Min? Which is Max? Are They Global?</h2>
+
+<div class="section-label" style="border-top:none;margin-top:0;padding-top:0">Step 3 — Test Both Sides of Each Point</div>
+
+<div class="explain">Same method as before — pick values left and right, plug into f'(x) = 3x² − 12, check the signs.</div>
+
+<div class="card">
+<div class="card-title">Check x = −2</div>
+<div class="work-line">Try x = −3 (left): f'(−3) = 3(9) − 12 = 27 − 12 = <strong>+15</strong></div>
+<div class="work-line good">Positive → going UP ↗</div>
+<div class="work-line" style="margin-top:6px">Try x = 0 (right): f'(0) = 3(0) − 12 = <strong>−12</strong></div>
+<div class="work-line bad">Negative → going DOWN ↘</div>
+<div class="numline">UP then DOWN at x = −2:
+
+      ╭──╮  ← MAXIMUM (hill shape)
+    ↗    ↘
+  ↗        ↘</div>
+<div class="work-line" style="color:#D97706;font-weight:600">x = −2 is a MAXIMUM ✓</div>
+</div>
+
+<div class="card">
+<div class="card-title">Check x = +2</div>
+<div class="work-line">Try x = 0 (left): f'(0) = 3(0) − 12 = <strong>−12</strong></div>
+<div class="work-line bad">Negative → going DOWN ↘</div>
+<div class="work-line" style="margin-top:6px">Try x = 3 (right): f'(3) = 3(9) − 12 = 27 − 12 = <strong>+15</strong></div>
+<div class="work-line good">Positive → going UP ↗</div>
+<div class="numline">DOWN then UP at x = +2:
+
+  ↘        ↗
+    ↘    ↗
+      ╰──╯  ← MINIMUM (valley shape)</div>
+<div class="work-line" style="color:#2563EB;font-weight:600">x = +2 is a MINIMUM ✓</div>
+</div>
+
+<div class="section-label">Step 4 — Compute f(x) at All Important Points</div>
+
+<div class="card">
+<div class="card-title">Are These Global? Compare ALL Candidates.</div>
+<div class="explain" style="margin:0">
+When the function is neither convex nor concave, a local min/max might NOT be global. We need to check:<br><br>
+<strong>1.</strong> The critical points (where f'(x) = 0)<br>
+<strong>2.</strong> The boundary points (edges of the interval)<br><br>
+Then compare ALL the f(x) values. Smallest wins global min. Largest wins global max.
+</div>
+</div>
+
+<div class="card">
+<div class="card-title">Compute f(x) at Every Candidate</div>
+<table class="tab">
+<tr><th>Point</th><th>Type</th><th>f(x) = x³ − 12x</th><th>Value</th></tr>
+<tr><td>x = −4</td><td>Boundary (left edge)</td><td>(−4)³ − 12(−4) = −64 + 48</td><td class="hla">−16</td></tr>
+<tr><td>x = −2</td><td>Critical (local max)</td><td>(−2)³ − 12(−2) = −8 + 24</td><td class="hlg">16</td></tr>
+<tr><td>x = +2</td><td>Critical (local min)</td><td>(2)³ − 12(2) = 8 − 24</td><td class="hlr">−16</td></tr>
+<tr><td>x = +4</td><td>Boundary (right edge)</td><td>(4)³ − 12(4) = 64 − 48</td><td class="hla">16</td></tr>
+</table>
+</div>
+
+<div class="card green">
+<div class="card-title">Pick the Winners</div>
+<div class="work-line good">Global minimum: f(x) = −16 at x = −4 AND x = +2 (tied)</div>
+<div class="work-line good">Global maximum: f(x) = 16 at x = −2 AND x = +4 (tied)</div>
+<div class="explain" style="margin-top:8px">
+Notice: the local minimum at x = 2 happens to tie with the boundary at x = −4 for the global minimum. The local maximum at x = −2 ties with the boundary at x = 4 for the global maximum.<br><br>
+<strong>Without checking the boundaries, we'd miss half the answer.</strong> That's why boundaries matter when the function isn't convex.
+</div>
+</div>
+
+<div class="outcome done">★ Exercise 2 complete. Neither convex nor concave → find ALL critical points + boundaries → compare values → pick the best.</div>
+`},
+
+// ===== 5: THE TWO CASES COMPARED =====
+{title:"The Two Cases",html:`
+<div class="chapter-num">Key Insight</div>
+<h2>Convex vs Neither — The Two Cases You'll Face</h2>
+
+<div class="card green">
+<div class="card-title">Case 1 — Convex (like Exercise 1)</div>
+<div class="explain" style="margin:0">
+<strong>Shape:</strong> One bowl. All x² terms positive. Both edges go to infinity.<br>
+<strong>f'(x) = 0 gives:</strong> ONE solution.<br>
+<strong>Min or max?</strong> Test both sides — down then up = min.<br>
+<strong>Global?</strong> YES — automatically. Only one valley exists.<br>
+<strong>Boundaries?</strong> Don't need to check. The bowl shape guarantees it.
+</div>
+</div>
+
+<div class="card amber">
+<div class="card-title">Case 2 — Neither Convex Nor Concave (like Exercise 2)</div>
+<div class="explain" style="margin:0">
+<strong>Shape:</strong> Roller coaster. Hills AND valleys.<br>
+<strong>f'(x) = 0 gives:</strong> MULTIPLE solutions.<br>
+<strong>Min or max?</strong> Test both sides of EACH solution.<br>
+<strong>Global?</strong> NOT guaranteed — have to compare all candidates.<br>
+<strong>Boundaries?</strong> MUST check them. The global answer might be at the edge.
+</div>
+</div>
+
+<div class="card blue">
+<div class="card-title">How to Tell Which Case You're In</div>
+<div class="explain" style="margin:0">
+<strong>Quickest way:</strong> How many solutions does f'(x) = 0 give?<br><br>
+• ONE solution → almost certainly convex → one min, it's global<br>
+• TWO or more solutions → neither → check each one + boundaries<br><br>
+<strong>For inventory problems:</strong> Always convex. Always one answer. Always global. Don't overthink it.
+</div>
+</div>
+
+<div class="outcome next">→ Final summary.</div>
+`},
+
+// ===== 6: SUMMARY =====
+{title:"Summary",html:`
+<div class="chapter-num">Epilogue</div>
+<h2>The Derivative = 0 Recipe</h2>
+
+<div class="card blue">
+<div class="card-title">The Steps</div>
+<div class="explain" style="margin:0">
+<strong>1.</strong> Take f'(x). Rewrite 1/x as x⁻¹ first.<br>
+<strong>2.</strong> Set f'(x) = 0. Solve for x. Count how many solutions.<br>
+<strong>3.</strong> For each solution, test a value LEFT and RIGHT in f'(x):<br>
+→ Negative then positive = minimum (valley)<br>
+→ Positive then negative = maximum (hill)<br>
+<strong>4.</strong> If ONE solution and edges → ∞: it's global. Done.<br>
+<strong>5.</strong> If MULTIPLE solutions: compute f(x) at each critical point AND at boundaries. Smallest = global min. Largest = global max.
+</div>
+</div>
+
+<div class="card">
+<div class="card-title">Harris Formula (Inventory Only)</div>
+<div class="work-line result">x = √(2pd/h)</div>
+<div class="explain" style="margin-top:6px">
+p = order cost, d = annual demand, h = holding cost per unit per year.<br>
+Sanity check: ordering cost ≈ holding cost at the optimum. Always.
+</div>
+</div>
+
+<div class="card">
+<div class="card-title">Where This Method Fits</div>
+<table class="tab">
+<tr><th>Method</th><th>Constraint Type</th></tr>
+<tr><td class="hl">Derivative = 0</td><td>None (unconstrained)</td></tr>
+<tr><td>Penalty</td><td>Equality (=)</td></tr>
+<tr><td>Barrier</td><td>Inequality (≤, ≥)</td></tr>
+<tr><td>KKT</td><td>Any combination</td></tr>
+</table>
+</div>
+
+<div class="card">
+<div class="card-title">The Two Cases</div>
+<table class="tab">
+<tr><th></th><th>Convex</th><th>Neither</th></tr>
+<tr><td style="text-align:left;font-family:inherit">Shape</td><td>One bowl</td><td>Roller coaster</td></tr>
+<tr><td style="text-align:left;font-family:inherit">Solutions from f'=0</td><td>One</td><td>Multiple</td></tr>
+<tr><td style="text-align:left;font-family:inherit">Local = global?</td><td class="hlg">Yes</td><td class="hlr">Not guaranteed</td></tr>
+<tr><td style="text-align:left;font-family:inherit">Check boundaries?</td><td>No need</td><td class="hlr">Must check</td></tr>
+</table>
+</div>
+
+<div class="outcome done">Foundation complete. All other NLP methods (Penalty, Barrier, KKT) use derivative = 0 as a step inside them.</div>
+`}
+];
+
+function render(){
+  const ch=chapters[cur];
+  document.getElementById('content').innerHTML=`<div class="chapter active">${ch.html}</div>`;
+  document.getElementById('stepLabel').textContent=`${cur+1} / ${chapters.length}`;
+  document.getElementById('prevBtn').disabled=cur===0;
+  document.getElementById('nextBtn').disabled=cur===chapters.length-1;
+  document.getElementById('bar').style.width=((cur+1)/chapters.length*100)+'%';
+  let dots='';
+  chapters.forEach((_,i)=>{dots+=`<div class="dot${i===cur?' active':''}" onclick="goTo(${i})"></div>`;});
+  document.getElementById('dots').innerHTML=dots;
+  window.scrollTo({top:0,behavior:'smooth'});
+}
+function go(d){cur=Math.max(0,Math.min(chapters.length-1,cur+d));render();}
+function goTo(i){cur=i;render();}
+document.addEventListener('keydown',e=>{if(e.key==='ArrowRight')go(1);if(e.key==='ArrowLeft')go(-1);});
+render();
+</script>
+</body>
+</html>

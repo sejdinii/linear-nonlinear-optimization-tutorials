@@ -1,0 +1,529 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>NLP — Barrier Method</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{background:#fff;color:#1a1a1a;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI','Helvetica Neue',sans-serif;-webkit-font-smoothing:antialiased;line-height:1.5}
+
+.nav{position:sticky;top:0;z-index:50;background:rgba(255,255,255,.92);backdrop-filter:blur(12px);border-bottom:1px solid #E5E7EB;padding:0 24px;display:flex;align-items:center;height:48px;gap:12px}
+.nav a{font-size:.9rem;font-weight:600;text-decoration:none;color:inherit;cursor:pointer}
+.nav a:hover{color:#2563EB}
+.nav .step-dots{display:flex;gap:5px;margin-left:auto;flex-wrap:wrap}
+.nav .dot{width:7px;height:7px;border-radius:50%;background:#E5E7EB;cursor:pointer;transition:all .2s}
+.nav .dot.active{background:#2563EB;transform:scale(1.4)}
+
+.progress{position:sticky;top:48px;z-index:49;height:3px;background:#F3F4F6}
+.progress-fill{height:100%;background:#2563EB;transition:width .4s ease}
+
+.controls{position:sticky;top:51px;z-index:48;background:rgba(255,255,255,.95);backdrop-filter:blur(8px);border-bottom:1px solid #F3F4F6;padding:8px 24px;display:flex;align-items:center;gap:10px;max-width:840px;margin:0 auto}
+.btn{padding:6px 16px;border-radius:8px;border:1px solid #E5E7EB;background:#fff;font-size:.8rem;font-weight:500;cursor:pointer;transition:all .15s;color:#374151}
+.btn:hover{background:#F9FAFB}
+.btn.primary{background:#2563EB;color:#fff;border-color:#2563EB}
+.btn.primary:hover{background:#1D4ED8}
+.btn:disabled{opacity:.3;cursor:default}
+.step-label{font-size:.78rem;color:#6B7280;margin-left:auto}
+
+.content{max-width:840px;margin:0 auto;padding:32px 24px 80px}
+.chapter{display:none;animation:fadeIn .3s ease}
+.chapter.active{display:block}
+@keyframes fadeIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+
+.chapter-num{font-size:.7rem;font-weight:600;text-transform:uppercase;letter-spacing:.08em;color:#2563EB;margin-bottom:4px}
+.chapter h2{font-size:1.25rem;font-weight:600;margin-bottom:4px}
+.subtitle{font-size:.88rem;color:#6B7280;margin-bottom:20px;line-height:1.6}
+
+.card{background:#F9FAFB;border:1px solid #E5E7EB;border-radius:12px;padding:18px 20px;margin:14px 0}
+.card.amber{border-left:4px solid #D97706}
+.card.green{border-left:4px solid #059669}
+.card.red{border-left:4px solid #DC2626}
+.card.blue{border-left:4px solid #2563EB}
+.card.purple{border-left:4px solid #7C3AED}
+.card-title{font-size:.7rem;font-weight:600;text-transform:uppercase;letter-spacing:.06em;color:#6B7280;margin-bottom:8px}
+
+.work-line{font-family:'SF Mono',Menlo,Consolas,monospace;font-size:.84rem;padding:3px 0;line-height:1.7;color:#374151}
+.work-line.result{color:#2563EB;font-weight:600}
+.work-line.good{color:#059669;font-weight:600}
+.work-line.bad{color:#DC2626;font-weight:600}
+.work-line.indent{padding-left:20px;color:#6B7280}
+
+.explain{font-size:.86rem;color:#6B7280;line-height:1.6;margin:8px 0}
+.explain strong{color:#1a1a1a;font-weight:600}
+
+.outcome{margin-top:16px;padding:12px 16px;border-radius:10px;font-size:.86rem;font-weight:500}
+.outcome.next{background:rgba(37,99,235,.05);border:1px solid rgba(37,99,235,.12);color:#2563EB}
+.outcome.done{background:rgba(5,150,105,.05);border:1px solid rgba(5,150,105,.12);color:#059669}
+
+.section-label{font-size:.72rem;font-weight:600;text-transform:uppercase;letter-spacing:.06em;color:#2563EB;margin:20px 0 8px;padding-top:16px;border-top:1px solid #F3F4F6}
+
+table.tab{width:100%;border-collapse:collapse;font-size:.82rem;margin:8px 0}
+table.tab th{text-align:center;padding:7px 8px;color:#6B7280;font-weight:500;border-bottom:2px solid #E5E7EB;font-size:.74rem}
+table.tab td{text-align:center;padding:7px 8px;border-bottom:1px solid #F3F4F6;font-family:'SF Mono',Menlo,Consolas,monospace;font-size:.82rem}
+table.tab td.hlg{background:rgba(5,150,105,.06);color:#059669;font-weight:600}
+table.tab td.hlr{background:rgba(220,38,38,.06);color:#DC2626;font-weight:600}
+table.tab td.hl{background:rgba(37,99,235,.06);color:#2563EB;font-weight:600}
+table.tab td.hla{background:rgba(217,119,6,.06);color:#D97706;font-weight:600}
+</style>
+</head>
+<body>
+
+<div class="nav">
+  <a href="index.html">← Barrier Method</a>
+  <div class="step-dots" id="dots"></div>
+</div>
+<div class="progress"><div class="progress-fill" id="bar"></div></div>
+<div class="controls">
+  <button class="btn" id="prevBtn" onclick="go(-1)">← Back</button>
+  <button class="btn primary" id="nextBtn" onclick="go(1)">Next →</button>
+  <div class="step-label" id="stepLabel"></div>
+</div>
+<div class="content" id="content"></div>
+
+<script>
+let cur=0;
+
+const chapters=[
+
+// ===== 0: PROLOGUE =====
+{title:"What is the Barrier Method?",html:`
+<div class="chapter-num">Prologue</div>
+<h2>Barrier Method — Handle Inequality Constraints</h2>
+<div class="subtitle">Like the penalty method, but for ≤ and ≥ constraints. Uses a log "wall" instead of squaring.</div>
+
+<div class="card blue">
+<div class="card-title">When To Use It</div>
+<div class="explain" style="margin:0">
+When your NLP has <strong>inequality constraints</strong> (≤ or ≥).<br><br>
+Derivative = 0 → no constraints.<br>
+Penalty → equality constraints (=).<br>
+<strong>Barrier → inequality constraints (≤, ≥).</strong><br>
+KKT → any combination.
+</div>
+</div>
+
+<div class="card blue">
+<div class="card-title">The Recipe</div>
+<div class="explain" style="margin:0">
+<strong>1.</strong> Take the inequality constraint.<br>
+<strong>2.</strong> Rewrite it so the feasible side is > 0.<br>
+<strong>3.</strong> Take log of it, multiply by −ψ (where ψ is a small positive number).<br>
+<strong>4.</strong> Add it to the objective function.<br>
+<strong>5.</strong> Now you have no constraint — just derivative = 0.<br><br>
+<strong>For ≥ :</strong> x ≥ 3 → add <strong>−ψ log(x − 3)</strong><br>
+<strong>For ≤ :</strong> x ≤ 10 → add <strong>−ψ log(10 − x)</strong><br><br>
+Just flip what's inside the log so it's positive when you're on the feasible side.
+</div>
+</div>
+
+<div class="card amber">
+<div class="card-title">Why the Flip for ≤?</div>
+<div class="explain" style="margin:0">
+log only works with <strong>positive</strong> numbers. log(negative) = error. log(0) = −∞. So whatever you put inside the log must be positive when you're on the feasible side.<br><br>
+<strong>≥ case:</strong> x ≥ 3 means x − 3 ≥ 0. When x is feasible (like x = 5), then x − 3 = 2 → <strong>positive</strong> ✓. So log(x − 3) works.<br><br>
+<strong>≤ case:</strong> x ≤ 10 means x − 10 ≤ 0. When x is feasible (like x = 7), then x − 10 = −3 → <strong>negative</strong> ✗. log(−3) crashes. So we flip it: 10 − x = 3 → <strong>positive</strong> ✓. log(10 − x) works.<br><br>
+The rule: put the <strong>bigger side minus the smaller side</strong> inside the log. That way it's always positive when feasible, and approaches zero (triggering the wall) when you reach the boundary.
+</div>
+</div>
+</div>
+
+<div class="card blue">
+<div class="card-title">Why Log?</div>
+<div class="explain" style="margin:0">
+log(something) shoots to <strong>−∞</strong> as "something" approaches 0. So −ψ log(something) shoots to <strong>+∞</strong>.<br><br>
+This creates an invisible wall at the constraint boundary. As you get close to violating the constraint, the cost explodes — pushing you back to safety.<br><br>
+That's why it's called a "barrier" — there's a wall you can't cross.
+</div>
+</div>
+
+<div class="card blue">
+<div class="card-title">ψ Controls How Thick the Wall Is</div>
+<div class="explain" style="margin:0">
+<strong>Big ψ</strong> (like 1) = thick wall → stays far from the boundary → answer far from optimal<br>
+<strong>Small ψ</strong> (like 0.01) = thin wall → gets close to boundary → answer close to optimal<br>
+<strong>ψ → 0</strong> = no wall → reaches the exact optimal<br><br>
+Opposite of penalty method: penalty uses big M, barrier uses small ψ.
+</div>
+</div>
+
+<div class="card green">
+<div class="card-title">The Key Difference from Penalty</div>
+<div class="explain" style="margin:0">
+<strong>Penalty:</strong> solutions can be INFEASIBLE (violate the constraint).<br>
+<strong>Barrier:</strong> solutions are ALWAYS FEASIBLE (the log wall prevents crossing).<br><br>
+This is a common exam comparison question.
+</div>
+</div>
+
+<div class="outcome next">→ Let's solve the exercise.</div>
+`},
+
+// ===== 1: EXERCISE SETUP =====
+{title:"Exercise — Setup",html:`
+<div class="chapter-num">Exercise — From Week 10 Workshop</div>
+<h2>Barrier Method Exercise</h2>
+<div class="subtitle">This is part (b) of the same workshop question. Same problem as penalty, but with ≥ instead of =.</div>
+
+<div class="card blue">
+<div class="card-title">The Original NLP</div>
+<div class="work-line result">min x²</div>
+<div class="work-line">s.t. x ≥ 3</div>
+<div class="explain" style="margin-top:8px">The true answer is x = 3 (the closest point to 0 that satisfies x ≥ 3, and x² is smallest there).</div>
+</div>
+
+<div class="section-label" style="border-top:none">Step 1 — Build the Barrier Version</div>
+
+<div class="card">
+<div class="card-title">Remove the constraint, add the log wall</div>
+<div class="explain" style="margin:0">The constraint is x ≥ 3. Rewrite as x − 3 ≥ 0. The feasible side is x − 3 > 0.</div>
+<div class="work-line" style="margin-top:8px">Take log of the feasible expression: log(x − 3)</div>
+<div class="work-line">Multiply by −ψ: −ψ log(x − 3)</div>
+<div class="work-line">Add to objective: x² − ψ log(x − 3)</div>
+</div>
+
+<div class="card purple">
+<div class="card-title">The Barrier Version</div>
+<div class="work-line result">min x² − ψ log(x − 3)    for x > 3</div>
+<div class="work-line">No constraint anymore!</div>
+<div class="explain" style="margin-top:8px">
+If x = 10: log(7) is fine, small penalty.<br>
+If x = 3.01: log(0.01) is very negative, so −ψ × (very negative) = very positive. Huge cost.<br>
+If x = 3: log(0) = −∞. Cost = ∞. <strong>The wall stops you here.</strong>
+</div>
+</div>
+
+<div class="card amber">
+<div class="card-title">How to Differentiate Log — One Rule</div>
+<div class="explain" style="margin:0">
+Derivative of log(something) = <strong>1 over the something × derivative of the something</strong>
+</div>
+<div class="work-line result" style="margin-top:8px">d/dx log(□) = 1/□ × □'</div>
+<div class="explain" style="margin-top:10px"><strong>Example 1:</strong> log(x − 3)</div>
+<div class="work-line indent">Something = x − 3. Derivative of (x − 3) = 1.</div>
+<div class="work-line indent">Result: 1/(x − 3) × 1 = <strong>1/(x − 3)</strong></div>
+<div class="explain" style="margin-top:10px"><strong>Example 2:</strong> log(2x − 3)</div>
+<div class="work-line indent">Something = 2x − 3. Derivative of (2x − 3) = 2.</div>
+<div class="work-line indent">Result: 1/(2x − 3) × 2 = <strong>2/(2x − 3)</strong></div>
+<div class="explain" style="margin-top:10px"><strong>Our actual term:</strong> −ψ log(x − 3)</div>
+<div class="work-line indent">The −ψ is a constant, stays out front.</div>
+<div class="work-line indent">−ψ × 1/(x − 3) × 1 = <strong>−ψ/(x − 3)</strong></div>
+</div>
+
+<div class="outcome next">→ Now differentiate and solve.</div>
+`},
+
+// ===== 2: PART (i) =====
+{title:"Part (i) — Solve for x*(ψ)",html:`
+<div class="chapter-num">Part (i) — Find x*(ψ)</div>
+<h2>Differentiate and set to zero</h2>
+
+<div class="section-label" style="border-top:none;margin-top:0;padding-top:0">Step 2 — Differentiate</div>
+
+<div class="card">
+<div class="explain" style="margin:0">Differentiate each term of x² − ψ log(x − 3):</div>
+<div class="work-line" style="margin-top:8px">x² → 2x</div>
+<div class="work-line">−ψ log(x − 3) → −ψ × 1/(x − 3) = −ψ/(x − 3)</div>
+<div class="work-line result" style="margin-top:6px">f'(x) = 2x − ψ/(x − 3)</div>
+</div>
+
+<div class="section-label">Step 3 — Set to Zero and Solve</div>
+
+<div class="card">
+<div class="work-line">2x − ψ/(x − 3) = 0</div>
+<div class="explain" style="margin-top:6px">Multiply both sides by (x − 3) to clear the fraction:</div>
+<div class="work-line">2x(x − 3) − ψ = 0</div>
+<div class="work-line">2x(x − 3) = ψ</div>
+<div class="explain" style="margin-top:6px">Expand the left side:</div>
+<div class="work-line">2x² − 6x = ψ</div>
+<div class="work-line">2x² − 6x − ψ = 0</div>
+</div>
+
+<div class="card amber">
+<div class="card-title">This Is a Quadratic — Let's Solve It Step by Step</div>
+<div class="explain" style="margin:0">
+We have: <strong>2x² − 6x − ψ = 0</strong><br><br>
+This is in the form ax² + bx + c = 0. Let's identify each piece:
+</div>
+<div class="work-line" style="margin-top:8px">a = 2 (the number in front of x²)</div>
+<div class="work-line">b = −6 (the number in front of x)</div>
+<div class="work-line">c = −ψ (the number with no x)</div>
+</div>
+
+<div class="card">
+<div class="card-title">The Quadratic Formula</div>
+<div class="explain" style="margin:0">For any ax² + bx + c = 0:</div>
+<div class="work-line result" style="margin-top:6px">x = (−b ± √(b² − 4ac)) / 2a</div>
+<div class="explain" style="margin-top:8px">Now plug in our a, b, c:</div>
+<div class="work-line" style="margin-top:8px">x = (−(−6) ± √((−6)² − 4(2)(−ψ))) / (2 × 2)</div>
+<div class="explain" style="margin-top:6px">Simplify piece by piece:</div>
+<div class="work-line" style="margin-top:6px"><strong>Top left:</strong> −(−6) = 6</div>
+<div class="work-line"><strong>Under the √:</strong> (−6)² = 36</div>
+<div class="work-line"><strong>Under the √:</strong> −4(2)(−ψ) = +8ψ (two negatives make positive)</div>
+<div class="work-line"><strong>Under the √ total:</strong> 36 + 8ψ</div>
+<div class="work-line"><strong>Bottom:</strong> 2 × 2 = 4</div>
+<div class="work-line result" style="margin-top:8px">x = (6 ± √(36 + 8ψ)) / 4</div>
+</div>
+
+<div class="card">
+<div class="card-title">± Gives Two Answers — Which One?</div>
+<div class="explain" style="margin:0">
+The ± means two solutions:<br><br>
+<strong>+ root:</strong> x = (6 + √(36 + 8ψ)) / 4<br>
+<strong>− root:</strong> x = (6 − √(36 + 8ψ)) / 4<br><br>
+We need x > 3 (we're on the feasible side of the barrier).<br><br>
+Let's check with ψ = 1:<br>
+</div>
+<div class="work-line" style="margin-top:6px">+ root: (6 + √44) / 4 = (6 + 6.633) / 4 = <strong>3.158</strong> ✓ (above 3)</div>
+<div class="work-line">− root: (6 − √44) / 4 = (6 − 6.633) / 4 = <strong>−0.158</strong> ✗ (below 3)</div>
+<div class="explain" style="margin-top:8px">The − root gives a negative number — way below 3, infeasible. So we always take the <strong>+ root</strong>.</div>
+<div class="work-line result" style="margin-top:8px;font-size:.95rem">x*(ψ) = (6 + √(36 + 8ψ)) / 4</div>
+</div>
+
+<div class="outcome next">→ Part (ii) — plug in ψ values.</div>
+`},
+
+// ===== 3: PART (ii) =====
+{title:"Part (ii) — Plug in ψ values",html:`
+<div class="chapter-num">Part (ii)</div>
+<h2>Compute x*(ψ) for ψ = 1, 0.1, 0.01</h2>
+<div class="subtitle">The true optimal is x = 3. As ψ gets smaller, the barrier wall gets thinner and x should get closer to 3.</div>
+
+<div class="card">
+<div class="card-title">ψ = 1 (Thick wall)</div>
+<div class="work-line">x*(1) = (6 + √(36 + 8)) / 4 = (6 + √44) / 4</div>
+<div class="work-line">= (6 + 6.633) / 4 = 12.633 / 4</div>
+<div class="work-line result">x* = 3.158</div>
+<div class="explain">The wall keeps x well away from 3. Overshoots by 0.158.</div>
+</div>
+
+<div class="card">
+<div class="card-title">ψ = 0.1 (Thinner wall)</div>
+<div class="work-line">x*(0.1) = (6 + √(36 + 0.8)) / 4 = (6 + √36.8) / 4</div>
+<div class="work-line">= (6 + 6.066) / 4 = 12.066 / 4</div>
+<div class="work-line result">x* = 3.017</div>
+<div class="explain">Much closer. Only 0.017 away from 3.</div>
+</div>
+
+<div class="card">
+<div class="card-title">ψ = 0.01 (Very thin wall)</div>
+<div class="work-line">x*(0.01) = (6 + √(36 + 0.08)) / 4 = (6 + √36.08) / 4</div>
+<div class="work-line">= (6 + 6.007) / 4 = 12.007 / 4</div>
+<div class="work-line result">x* = 3.002</div>
+<div class="explain">Almost exactly 3. Wall is barely there.</div>
+</div>
+
+<div class="card green">
+<div class="card-title">The Pattern</div>
+<table class="tab">
+<tr><th>ψ</th><th>x*(ψ)</th><th>Distance from 3</th><th>Feasible?</th></tr>
+<tr><td>1</td><td class="hlr">3.158</td><td>0.158</td><td class="hlg">Yes (x > 3)</td></tr>
+<tr><td>0.1</td><td class="hla">3.017</td><td>0.017</td><td class="hlg">Yes (x > 3)</td></tr>
+<tr><td>0.01</td><td class="hlg">3.002</td><td>0.002</td><td class="hlg">Yes (x > 3)</td></tr>
+<tr><td>→ 0</td><td class="hlg">3.000</td><td>0.000</td><td class="hlg">Yes</td></tr>
+</table>
+<div class="explain" style="margin-top:8px">
+Two things to notice:<br><br>
+<strong>1.</strong> As ψ decreases, x* approaches 3 — opposite of penalty where M increases.<br>
+<strong>2.</strong> Every single answer is <strong>above 3</strong> — always feasible! The log wall prevents x from going below 3. This is the key advantage over penalty method.
+</div>
+</div>
+
+<div class="outcome next">→ Part (iii) — find the ψ boundary.</div>
+`},
+
+// ===== 4: PART (iii) =====
+{title:"Part (iii) — Find ψ threshold",html:`
+<div class="chapter-num">Part (iii)</div>
+<h2>Find the largest ψ such that x*(ψ) is within 1% of x = 3</h2>
+
+<div class="section-label" style="border-top:none;margin-top:0;padding-top:0">What Does "Within 1%" Mean?</div>
+
+<div class="card">
+<div class="explain" style="margin:0">
+1% of 3 = 0.03. Since barrier always gives x > 3, we need x ≤ 3.03.<br><br>
+(6 + √(36 + 8ψ)) / 4 ≤ 3.03
+</div>
+</div>
+
+<div class="section-label">Solve the Inequality</div>
+
+<div class="card">
+<div class="work-line">(6 + √(36 + 8ψ)) / 4 ≤ 3.03</div>
+<div class="work-line" style="margin-top:4px">Multiply both sides by 4:</div>
+<div class="work-line">6 + √(36 + 8ψ) ≤ 12.12</div>
+<div class="work-line" style="margin-top:4px">Subtract 6:</div>
+<div class="work-line">√(36 + 8ψ) ≤ 6.12</div>
+<div class="work-line" style="margin-top:4px">Square both sides:</div>
+<div class="work-line">36 + 8ψ ≤ 37.4544</div>
+<div class="work-line" style="margin-top:4px">Subtract 36:</div>
+<div class="work-line">8ψ ≤ 1.4544</div>
+<div class="work-line" style="margin-top:4px">Divide by 8:</div>
+<div class="work-line result">ψ ≤ 0.18</div>
+</div>
+
+<div class="card green">
+<div class="card-title">Verify</div>
+<div class="work-line">x*(0.18) = (6 + √(36 + 1.44)) / 4 = (6 + √37.44) / 4</div>
+<div class="work-line">= (6 + 6.119) / 4 = 12.119 / 4 = <strong>3.030</strong></div>
+<div class="work-line good">3.030 is exactly 1% from 3. ✓</div>
+<div class="work-line" style="margin-top:8px">x*(0.19) = (6 + √(36 + 1.52)) / 4 = (6 + √37.52) / 4</div>
+<div class="work-line">= (6 + 6.126) / 4 = 12.126 / 4 = <strong>3.031</strong></div>
+<div class="work-line bad">3.031 is more than 1% from 3. ✗</div>
+<div class="work-line good" style="margin-top:6px">ψ = 0.18 (to two decimal places) ✓</div>
+</div>
+
+<div class="outcome next">→ Part (iv) — compare with penalty method.</div>
+`},
+
+// ===== 5: PART (iv) COMPARISON =====
+{title:"Part (iv) — Penalty vs Barrier",html:`
+<div class="chapter-num">Part (iv)</div>
+<h2>Penalty vs Barrier — The Comparison</h2>
+<div class="subtitle">The workshop asks: how do the two methods compare?</div>
+
+<div class="card">
+<div class="card-title">Same Problem, Two Methods</div>
+<table class="tab">
+<tr><th></th><th>Penalty (part a)</th><th>Barrier (part b)</th></tr>
+<tr><td style="text-align:left;font-family:inherit">Constraint</td><td>x = 3</td><td>x ≥ 3</td></tr>
+<tr><td style="text-align:left;font-family:inherit">What's added</td><td>M(x − 3)²</td><td>−ψ log(x − 3)</td></tr>
+<tr><td style="text-align:left;font-family:inherit">Parameter direction</td><td>M increases ↑</td><td>ψ decreases ↓</td></tr>
+<tr><td style="text-align:left;font-family:inherit">Approaches x = 3 from</td><td class="hlr">Below (x < 3)</td><td class="hlg">Above (x > 3)</td></tr>
+<tr><td style="text-align:left;font-family:inherit">Solutions feasible?</td><td class="hlr">NO — violates x = 3</td><td class="hlg">YES — always x > 3</td></tr>
+</table>
+</div>
+
+<div class="card green">
+<div class="card-title">What Does Feasible and Infeasible Mean?</div>
+<div class="explain" style="margin:0">
+<strong>Feasible</strong> = the answer satisfies the original constraint.<br>
+<strong>Infeasible</strong> = the answer violates the original constraint.<br><br>
+<strong>Penalty:</strong> original constraint was x = 3. Our answer was x = 2.97. Does 2.97 = 3? <strong>No.</strong> It breaks the constraint. That's infeasible. It's close, but it's on the wrong side.<br><br>
+<strong>Barrier:</strong> original constraint was x ≥ 3. Our answer was x = 3.002. Is 3.002 ≥ 3? <strong>Yes.</strong> It satisfies the constraint. That's feasible. It's not perfect, but it's on the right side.<br><br>
+Both methods get close but never reach the true answer exactly. The difference is <strong>which side</strong> they sit on while approaching it.
+</div>
+</div>
+
+<div class="card blue">
+<div class="card-title">Why Does This Happen?</div>
+<div class="explain" style="margin:0">
+<strong>Penalty:</strong> there's no wall. The M(x − 3)² just makes it expensive to be far from 3, but nothing stops you from going below 3. The original x² pulls x toward 0, so the answer ends up between 0 and 3 — always slightly infeasible.<br><br>
+<strong>Barrier:</strong> the log creates a literal wall at x = 3. As x approaches 3, log(x − 3) → −∞, cost → ∞. You physically can't cross to the other side. So the answer is always above 3 — always feasible.
+</div>
+</div>
+
+<div class="card amber">
+<div class="card-title">Does Penalty Ever Reach Exactly x = 3?</div>
+<div class="explain" style="margin:0">
+No. For any finite M, the answer is close but <strong>never exactly equal</strong>:<br><br>
+M = 1 → x = 1.5 (far)<br>
+M = 10 → x = 2.727 (closer)<br>
+M = 100 → x = 2.970 (almost)<br>
+M = ∞ → x = 3.000 (perfect, but you can't use infinity)<br><br>
+The answer is always approximate. That's why the exercise asks for "close enough" — like within 1%.
+</div>
+</div>
+
+<div class="card red">
+<div class="card-title">Can You Use Barrier Instead of Penalty (or Vice Versa)?</div>
+<div class="explain" style="margin:0">
+<strong>No. They're for different constraint types:</strong><br><br>
+<strong>Penalty problem:</strong> min x², s.t. x <strong>=</strong> 3<br>
+The only feasible point is exactly x = 3. Nothing else is allowed.<br><br>
+<strong>Barrier problem:</strong> min x², s.t. x <strong>≥</strong> 3<br>
+Any x from 3 to infinity is allowed. x = 3 happens to be the best.<br><br>
+Same answer (x = 3), but different problems. You can't put a log wall on an = constraint — there's no "feasible side." You'd need a wall on both sides, which doesn't work.<br><br>
+For the exam, always match the method to the constraint:<br>
+• See <strong>=</strong> → penalty<br>
+• See <strong>≤</strong> or <strong>≥</strong> → barrier<br>
+• See <strong>both</strong> → KKT
+</div>
+</div>
+
+<div class="outcome next">→ Summary.</div>
+`},
+
+// ===== 6: SUMMARY =====
+{title:"Summary",html:`
+<div class="chapter-num">Epilogue</div>
+<h2>The Barrier Method Recipe</h2>
+
+<div class="card blue">
+<div class="card-title">The Steps</div>
+<div class="explain" style="margin:0">
+<strong>1.</strong> Take the inequality constraint. Rewrite so the feasible side > 0.<br>
+<strong>2.</strong> Take log of it: log(feasible expression).<br>
+<strong>3.</strong> Multiply by −ψ and add to objective.<br>
+<strong>4.</strong> Differentiate, set to zero, solve for x in terms of ψ.<br>
+<strong>5.</strong> Plug in ψ values and watch x approach the true answer.<br>
+<strong>6.</strong> If asked: find the ψ threshold for a given accuracy.
+</div>
+</div>
+
+<div class="card">
+<div class="card-title">How to Handle ≥ and ≤</div>
+<div class="explain" style="margin:0">
+<strong>≥ constraint:</strong> x ≥ 3 → feasible is x − 3 > 0 → add <strong>−ψ log(x − 3)</strong><br><br>
+<strong>≤ constraint:</strong> x ≤ 10 → feasible is 10 − x > 0 → add <strong>−ψ log(10 − x)</strong><br><br>
+The rule: whatever expression is positive on the feasible side, put that inside the log.
+</div>
+</div>
+
+<div class="card">
+<div class="card-title">Key Facts</div>
+<div class="explain" style="margin:0">
+• Barrier method is for <strong>inequality constraints (≤, ≥)</strong><br>
+• Uses <strong>−ψ log(feasible expression)</strong><br>
+• Smaller ψ → closer to true answer (opposite of penalty's big M)<br>
+• Solutions are <strong>always feasible</strong> — the log wall prevents crossing<br>
+• Only need one new derivative rule: log(stuff) → 1/stuff
+</div>
+</div>
+
+<div class="card">
+<div class="card-title">The Exercise We Solved</div>
+<table class="tab">
+<tr><th>Part</th><th>Question</th><th>Answer</th></tr>
+<tr><td>(i)</td><td>Find x*(ψ)</td><td class="hl">(6 + √(36+8ψ)) / 4</td></tr>
+<tr><td>(ii)</td><td>ψ = 1</td><td class="hlr">x* = 3.158</td></tr>
+<tr><td>(ii)</td><td>ψ = 0.1</td><td class="hla">x* = 3.017</td></tr>
+<tr><td>(ii)</td><td>ψ = 0.01</td><td class="hlg">x* = 3.002</td></tr>
+<tr><td>(iii)</td><td>Within 1%</td><td class="hlg">ψ = 0.18</td></tr>
+</table>
+</div>
+
+<div class="card">
+<div class="card-title">Penalty vs Barrier</div>
+<table class="tab">
+<tr><th></th><th>Penalty</th><th>Barrier</th></tr>
+<tr><td style="text-align:left;font-family:inherit">For</td><td>= constraints</td><td>≤, ≥ constraints</td></tr>
+<tr><td style="text-align:left;font-family:inherit">Uses</td><td>M(constraint)²</td><td>−ψ log(constraint)</td></tr>
+<tr><td style="text-align:left;font-family:inherit">Better with</td><td>Bigger M</td><td>Smaller ψ</td></tr>
+<tr><td style="text-align:left;font-family:inherit">Feasible?</td><td class="hlr">No</td><td class="hlg">Always</td></tr>
+</table>
+</div>
+
+<div class="outcome done">Barrier done. Last method: KKT Conditions — handles any mix of = and ≤ and ≥ constraints at once.</div>
+`}
+];
+
+function render(){
+  const ch=chapters[cur];
+  document.getElementById('content').innerHTML=`<div class="chapter active">${ch.html}</div>`;
+  document.getElementById('stepLabel').textContent=`${cur+1} / ${chapters.length}`;
+  document.getElementById('prevBtn').disabled=cur===0;
+  document.getElementById('nextBtn').disabled=cur===chapters.length-1;
+  document.getElementById('bar').style.width=((cur+1)/chapters.length*100)+'%';
+  let dots='';
+  chapters.forEach((_,i)=>{dots+=`<div class="dot${i===cur?' active':''}" onclick="goTo(${i})"></div>`;});
+  document.getElementById('dots').innerHTML=dots;
+  window.scrollTo({top:0,behavior:'smooth'});
+}
+function go(d){cur=Math.max(0,Math.min(chapters.length-1,cur+d));render();}
+function goTo(i){cur=i;render();}
+document.addEventListener('keydown',e=>{if(e.key==='ArrowRight')go(1);if(e.key==='ArrowLeft')go(-1);});
+render();
+</script>
+</body>
+</html>
